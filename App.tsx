@@ -1,20 +1,44 @@
+import React from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { PaperProvider } from 'react-native-paper';
+import { PortalProvider } from '@gorhom/portal'; // 👈 importa daqui
+import Toast from 'react-native-toast-message';
+import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
+import { AuthProvider } from './src/contexts/AuthContext';
+import AppNavigator from './src/navigation/AppNavigator';
 
-export default function App() {
+function AppContent() {
+  const { isDarkMode } = useTheme();
+  
   return (
-    <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <>
+      <StatusBar 
+        style={isDarkMode ? "light" : "dark"} 
+        backgroundColor="transparent" 
+        translucent 
+      />
+      <AppNavigator />
+      <Toast />
+    </>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+export default function App() {
+  return (
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <PaperProvider>
+            <PortalProvider> {/* 👈 aqui */}
+              <NavigationContainer>
+                <AppContent />
+              </NavigationContainer>
+            </PortalProvider>
+          </PaperProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </SafeAreaProvider>
+  );
+}
