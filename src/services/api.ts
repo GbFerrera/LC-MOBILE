@@ -1,7 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { baseURL } from './base_URL';
-// Configuração da API  
-export const API_BASE_URL =  baseURL// Backend local
+
+// Configuração da API
+export const API_BASE_URL = 'http://localhost:3131';
 
 interface ApiResponse<T> {
   data?: T;
@@ -10,18 +11,13 @@ interface ApiResponse<T> {
 }
 
 class ApiService {
-  private baseURL: string;
-
-  constructor(baseURL: string) {
-    this.baseURL = baseURL;
-  }
-
   private async getHeaders(): Promise<Record<string, string>> {
     const token = await AsyncStorage.getItem('authToken');
     const companyId = await AsyncStorage.getItem('companyId');
     
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
+      'Accept': 'application/json',
     };
 
     if (token) {
@@ -42,7 +38,7 @@ class ApiService {
     try {
       const headers = await this.getHeaders();
       
-      const response = await fetch(`${this.baseURL}${endpoint}`, {
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         ...options,
         headers: {
           ...headers,
@@ -95,7 +91,7 @@ class ApiService {
   }
 }
 
-export const api = baseURL
+export const api = new ApiService();
 
 // Tipos de dados da API
 export interface Professional {
@@ -124,6 +120,16 @@ export interface Service {
   price: number;
   duration: number;
   company_id: number;
+}
+
+export interface ServiceResponse {
+  service_id: number;
+  service_name: string;
+  service_description: string | null;
+  service_price: string;
+  service_duration: number;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Appointment {
@@ -210,6 +216,19 @@ export const professionalService = {
   
   updateProfile: (data: Partial<Professional>) =>
     api.put<Professional>('/professionals/profile', data),
+};
+
+export const serviceService = {
+  getAll: () => api.get<ServiceResponse[]>('/service'),
+  
+  create: (data: Partial<ServiceResponse>) =>
+    api.post<ServiceResponse>('/service', data),
+  
+  update: (id: number, data: Partial<ServiceResponse>) =>
+    api.put<ServiceResponse>(`/service/${id}`, data),
+  
+  delete: (id: number) =>
+    api.delete(`/service/${id}`),
 };
 
 // Tipos para autenticação
