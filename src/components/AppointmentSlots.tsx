@@ -36,7 +36,7 @@ interface Appointment {
   professional_id: number;
   client_id: number | null;
   client_name?: string;
-  date: string;
+  appointment_date: string;
   start_time: string;
   end_time: string;
   notes?: string;
@@ -316,6 +316,7 @@ const AppointmentSlots: React.FC<AppointmentSlotsProps> = ({
               style={[
                 styles.appointmentCard,
                 appointmentStartingHere.status === 'cancelled' && styles.cancelledCard,
+                appointmentStartingHere.status === 'free' && styles.freeCard,
                 appointmentStartingHere.status === 'confirmed' && styles.confirmedCard,
                 appointmentStartingHere.status === 'completed' && styles.completedCard,
                 appointmentStartingHere.status === 'pending' && styles.pendingCard,
@@ -407,7 +408,7 @@ const AppointmentSlots: React.FC<AppointmentSlotsProps> = ({
                       <View style={styles.clientRow}>
                         <Ionicons name="person-outline" size={16} color={colors.gray[600]} />
                         <Text style={styles.clientName}>
-                          {appointment.client?.name || appointment.client_name || 'Cliente não identificado'}
+                          {appointment.client?.name || appointment.client_name || 'Intervalo livre'}
                         </Text>
                       </View>
                       {appointment.services.length > 0 && (
@@ -776,6 +777,19 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '300',
     color: '#689f38',
+  },
+  freeCard: {
+    backgroundColor: '#e8f5e8',
+    borderRadius: 16,
+    marginBottom: 8,
+    marginHorizontal: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#4caf50',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
 });
 

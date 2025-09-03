@@ -48,7 +48,7 @@ interface Appointment {
   company_id?: number;
   professional_id: number;
   client_id: number | null;
-  date: string;
+  appointment_date: string;
   start_time: string;
   end_time: string;
   notes?: string;
@@ -689,7 +689,7 @@ export default function AgendaScreen({ navigation }: any) {
                 >
                   <Text style={styles.todayTimeText}>{appointment.start_time.substring(0, 5)}</Text>
                   <Text style={styles.todayClientName} numberOfLines={2}>
-                    {appointment.client?.name || 'Intervalo'}
+                    {appointment.client?.name || 'Intervalo Livre'}
                   </Text>
                   <View style={[
                     styles.todayStatusBadge,
@@ -770,6 +770,7 @@ export default function AgendaScreen({ navigation }: any) {
                   setShowCreateDialog(true);
                 }}
                 onAppointmentClick={(appointment) => {
+                  console.log('Agendamento clicado:', JSON.stringify(appointment, null, 2));
                   setSelectedAppointment(appointment);
                   setShowDetailsDialog(true);
                 }}
@@ -1001,7 +1002,14 @@ export default function AgendaScreen({ navigation }: any) {
                         style={styles.timeInput}
                         placeholder="HH:MM"
                         value={freeIntervalData.start_time}
-                        onChangeText={(text) => setFreeIntervalData(prev => ({ ...prev, start_time: text }))}
+                        onChangeText={(text) => {
+                          // Formatar automaticamente para XX:XX
+                          let formatted = text.replace(/\D/g, ''); // Remove caracteres não numéricos
+                          if (formatted.length >= 3) {
+                            formatted = formatted.substring(0, 2) + ':' + formatted.substring(2, 4);
+                          }
+                          setFreeIntervalData(prev => ({ ...prev, start_time: formatted }));
+                        }}
                         keyboardType="numeric"
                         maxLength={5}
                       />
@@ -1016,7 +1024,14 @@ export default function AgendaScreen({ navigation }: any) {
                         style={styles.timeInput}
                         placeholder="HH:MM"
                         value={freeIntervalData.end_time}
-                        onChangeText={(text) => setFreeIntervalData(prev => ({ ...prev, end_time: text }))}
+                        onChangeText={(text) => {
+                          // Formatar automaticamente para XX:XX
+                          let formatted = text.replace(/\D/g, ''); // Remove caracteres não numéricos
+                          if (formatted.length >= 3) {
+                            formatted = formatted.substring(0, 2) + ':' + formatted.substring(2, 4);
+                          }
+                          setFreeIntervalData(prev => ({ ...prev, end_time: formatted }));
+                        }}
                         keyboardType="numeric"
                         maxLength={5}
                       />
@@ -1193,11 +1208,13 @@ export default function AgendaScreen({ navigation }: any) {
           <View style={styles.dialogContainer}>
             <ScrollView showsVerticalScrollIndicator={false} style={styles.dialogContent}>
               {selectedAppointment ? (
-                <View style={{ gap: 16 }}>
-                  <View style={styles.dialogHeader}>
-                    <Text style={styles.dialogTitle}>
-                      Detalhes do Agendamento
-                    </Text>
+                <View style={{ gap: 20 }}>
+                  {/* Header */}
+                  <View style={styles.detailsHeader}>
+                    <View style={styles.detailsHeaderLeft}>
+                      <Ionicons name="calendar" size={24} color={colors.primary} />
+                      <Text style={styles.detailsTitle}>Detalhes do Agendamento</Text>
+                    </View>
                     <TouchableOpacity 
                       onPress={() => {
                         setShowDetailsDialog(false);
@@ -1208,25 +1225,120 @@ export default function AgendaScreen({ navigation }: any) {
                       <Ionicons name="close" size={24} color={colors.gray[600]} />
                     </TouchableOpacity>
                   </View>
-            
-                  <View style={styles.slotInfoContainer}>
-                    <Ionicons name="calendar-outline" size={20} color={colors.primary} />
-                    <Text style={styles.slotInfoText}>
-                      {format(new Date(selectedAppointment.date), 'dd/MM/yyyy')}
-                    </Text>
-                    <Ionicons name="time-outline" size={20} color={colors.primary} style={{ marginLeft: 12 }} />
-                    <Text style={styles.slotInfoText}>
-                      {selectedAppointment.start_time.substring(0, 5)} - {selectedAppointment.end_time.substring(0, 5)}
-                    </Text>
+
+                  {/* Informações básicas */}
+                  <Text style={styles.detailsSubtitle}>Informações completas sobre o agendamento</Text>
+
+                  {/* Card de horário e status */}
+                  <View style={styles.appointmentInfoCard}>
+                    <View style={styles.appointmentTimeSection}>
+                      <Text style={styles.appointmentTimeText}>
+                        {selectedAppointment.start_time.substring(0, 5)} - {selectedAppointment.client?.name || 'Cliente'}
+                      </Text>
+                      <Text style={styles.appointmentServiceText}>
+                        {selectedAppointment.services && selectedAppointment.services.length > 0 
+                          ? selectedAppointment.services[0].service_name || 'Barba'
+                          : 'Serviço'}
+                      </Text>
+                    </View>
+                    <View style={[styles.statusDropdown, {
+                      backgroundColor: 
+                        selectedAppointment.status === 'confirmed' ? colors.success + '20' :
+                        selectedAppointment.status === 'pending' ? colors.warning + '20' :
+                        selectedAppointment.status === 'completed' ? colors.info + '20' :
+                        selectedAppointment.status === 'cancelled' ? colors.error + '20' :
+                        colors.gray[200]
+                    }]}>
+                      <Text style={[styles.statusDropdownText, {
+                        color: 
+                          selectedAppointment.status === 'confirmed' ? colors.success :
+                          selectedAppointment.status === 'pending' ? colors.warning :
+                          selectedAppointment.status === 'completed' ? colors.info :
+                          selectedAppointment.status === 'cancelled' ? colors.error :
+                          colors.gray[600]
+                      }]}>
+                        {selectedAppointment.status === 'confirmed' ? 'Confirmado' :
+                         selectedAppointment.status === 'pending' ? 'Pendente' :
+                         selectedAppointment.status === 'completed' ? 'Concluído' :
+                         selectedAppointment.status === 'cancelled' ? 'Cancelado' :
+                         'Status'}
+                      </Text>
+                      <Ionicons name="chevron-down" size={16} color={colors.gray[600]} />
+                    </View>
                   </View>
 
+                  {/* Dados do Cliente */}
                   <View style={styles.detailsSection}>
-                    <Text style={styles.detailsSectionTitle}>Cliente</Text>
-                    <View style={styles.detailsCard}>
+                    <View style={styles.sectionHeader}>
                       <Ionicons name="person" size={20} color={colors.primary} />
-                      <Text style={styles.detailsCardText}>
-                        {selectedAppointment.client?.name || 'Cliente não especificado'}
-                      </Text>
+                      <Text style={styles.detailsSectionTitle}>Dados do Cliente</Text>
+                    </View>
+                    <View style={styles.clientInfoGrid}>
+                      <View style={styles.clientInfoItem}>
+                        <Text style={styles.clientInfoLabel}>Nome</Text>
+                        <Text style={styles.clientInfoValue}>
+                          {selectedAppointment.client?.name || 'Cliente não identificado'}
+                        </Text>
+                      </View>
+                      <View style={styles.clientInfoItem}>
+                        <Text style={styles.clientInfoLabel}>Telefone</Text>
+                        <Text style={styles.clientInfoValue}>
+                          {selectedAppointment.client?.phone_number || 'Não informado'}
+                        </Text>
+                      </View>
+                      <View style={styles.clientInfoItem}>
+                        <Text style={styles.clientInfoLabel}>Email</Text>
+                        <Text style={styles.clientInfoValue}>
+                          {selectedAppointment.client?.email || 'Não informado'}
+                        </Text>
+                      </View>
+                      <View style={styles.clientInfoItem}>
+                        <Text style={styles.clientInfoLabel}>Documento</Text>
+                        <Text style={styles.clientInfoValue}>Não informado</Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Dados do Agendamento */}
+                  <View style={styles.detailsSection}>
+                    <View style={styles.sectionHeader}>
+                      <Ionicons name="calendar" size={20} color={colors.primary} />
+                      <Text style={styles.detailsSectionTitle}>Dados do Agendamento</Text>
+                    </View>
+                    <View style={styles.clientInfoGrid}>
+                      <View style={styles.clientInfoItem}>
+                        <Text style={styles.clientInfoLabel}>Data</Text>
+                        <Text style={styles.clientInfoValue}>
+                          {format(new Date(selectedAppointment.appointment_date), 'dd/MM/yyyy')}
+                        </Text>
+                      </View>
+                      <View style={styles.clientInfoItem}>
+                        <Text style={styles.clientInfoLabel}>Horário</Text>
+                        <Text style={styles.clientInfoValue}>
+                          {selectedAppointment.start_time.substring(0, 5)} - {selectedAppointment.end_time.substring(0, 5)}
+                        </Text>
+                      </View>
+                      <View style={styles.clientInfoItem}>
+                        <Text style={styles.clientInfoLabel}>Status</Text>
+                        <Text style={[styles.clientInfoValue, {
+                          color: 
+                            selectedAppointment.status === 'confirmed' ? colors.success :
+                            selectedAppointment.status === 'pending' ? colors.warning :
+                            selectedAppointment.status === 'completed' ? colors.info :
+                            selectedAppointment.status === 'cancelled' ? colors.error :
+                            colors.gray[600]
+                        }]}>
+                          {selectedAppointment.status === 'confirmed' ? 'Confirmado' :
+                           selectedAppointment.status === 'pending' ? 'Pendente' :
+                           selectedAppointment.status === 'completed' ? 'Concluído' :
+                           selectedAppointment.status === 'cancelled' ? 'Cancelado' :
+                           'Status'}
+                        </Text>
+                      </View>
+                      <View style={styles.clientInfoItem}>
+                        <Text style={styles.clientInfoLabel}>Profissional</Text>
+                        <Text style={styles.clientInfoValue}>Profissional</Text>
+                      </View>
                     </View>
                   </View>
 
@@ -1997,6 +2109,93 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: colors.gray[900],
+    paddingLeft: spacing.sm,
+  },
+  // Estilos do Dialog de Detalhes
+  detailsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  detailsHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  detailsTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: colors.gray[900],
+  },
+  detailsSubtitle: {
+    fontSize: 14,
+    color: colors.gray[600],
+    marginBottom: spacing.md,
+  },
+  appointmentInfoCard: {
+    backgroundColor: colors.gray[50],
+    borderRadius: 12,
+    padding: spacing.md,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
+  appointmentTimeSection: {
+    flex: 1,
+  },
+  appointmentTimeText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.gray[900],
+    marginBottom: 4,
+  },
+  appointmentServiceText: {
+    fontSize: 14,
+    color: colors.gray[600],
+  },
+  statusDropdown: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
+    borderRadius: 8,
+    gap: spacing.xs,
+  },
+  statusDropdownText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  detailsSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  clientInfoGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.md,
+  },
+  clientInfoItem: {
+    flex: 1,
+    minWidth: '45%',
+  },
+  clientInfoLabel: {
+    fontSize: 12,
+    color: colors.gray[600],
+    marginBottom: 4,
+    fontWeight: '500',
+  },
+  clientInfoValue: {
+    fontSize: 14,
+    color: colors.gray[900],
+    fontWeight: '500',
   },
 });
