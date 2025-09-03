@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   View,
   Text,
@@ -19,20 +20,18 @@ export default function ProfileScreen() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [emailNotifications, setEmailNotifications] = useState(false);
   
-  const {logout} = useAuth();
-
-  // Mock data - será substituído pela API
-  const professional = {
-    name: 'Dr. João Silva',
-    email: 'joao.silva@linkcalendar.com',
-    phone: '(11) 99999-9999',
-    specialty: 'Barbeiro',
-    company: 'Barbearia Silva',
+  const { logout, user } = useAuth();
+  const [professional, setProfessional] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    specialty: '',
+    company: '',
     avatar: 'https://via.placeholder.com/80',
-    rating: 4.8,
-    totalClients: 342,
-    totalServices: 1250,
-  };
+    rating: 0,
+    totalClients: 0,
+    totalServices: 0,
+  });
 
   const menuItems = [
     {
@@ -85,6 +84,49 @@ export default function ProfileScreen() {
       onPress: () => {},
     },
   ];
+
+
+  useEffect(() => {
+    fetchProfessional();
+  }, []);
+
+  async function fetchProfessional() {
+    try {
+      // Busca os dados do usuário do AsyncStorage
+      const userData = await AsyncStorage.getItem('@userData');
+      
+      if (userData) {
+        const parsedUser = JSON.parse(userData);
+        setProfessional({
+          name: parsedUser.name || '',
+          email: parsedUser.email || '',
+          phone: parsedUser.phone_number || '',
+          specialty: parsedUser.position || 'Não informado',
+          company: parsedUser.company_id ? `Empresa #${parsedUser.company_id}` : 'Não informado',
+          avatar: 'https://via.placeholder.com/80',
+          rating: 0, // Pode ser atualizado posteriormente com dados reais
+          totalClients: 0, // Pode ser atualizado posteriormente com dados reais
+          totalServices: 0, // Pode ser atualizado posteriormente com dados reais
+        });
+      } else if (user) {
+        // Se não encontrar no AsyncStorage, usa os dados do contexto de autenticação
+        setProfessional({
+          name: user.name || '',
+          email: user.email || '',
+          phone: user.phone_number || '',
+          specialty: user.position || 'Não informado',
+          company: user.company_id ? `Empresa #${user.company_id}` : 'Não informado',
+          avatar: 'https://via.placeholder.com/80',
+          rating: 0,
+          totalClients: 0,
+          totalServices: 0,
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao buscar dados do profissional:', error);
+    }
+  }
+
 
   return (
     <View style={styles.container}>
@@ -148,11 +190,15 @@ export default function ProfileScreen() {
               </View>
               <View style={styles.contactInfo}>
                 <Text style={styles.contactLabel}>Email</Text>
-                <Text style={styles.contactValue}>{professional.email}</Text>
+                <Text style={styles.contactValue} numberOfLines={1} ellipsizeMode="tail">
+                  {professional.email.length > 20 ? `${professional.email.substring(0, 20)}...` : professional.email}
+                </Text>
               </View>
             </View>
             <Text style={styles.contactLabel}>E-mail</Text>
-            <Text style={styles.contactValue}>{professional.email}</Text>
+            <Text style={styles.contactValue} numberOfLines={1} ellipsizeMode="tail">
+              {professional.email.length > 20 ? `${professional.email.substring(0, 20)}...` : professional.email}
+            </Text>
             <View style={styles.contactItem}>
               <Ionicons name="call-outline" size={18} color={theme.primary} />
               <View style={styles.contactInfo}>
