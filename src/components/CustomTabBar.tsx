@@ -119,7 +119,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
                 <View style={[
                   styles.circularTabInner,
                   isFocused && {
-                    backgroundColor: route.name === 'Dashboard' ? theme.primary : theme.white,
+                    backgroundColor: theme.primary,
                     borderColor: theme.primary,
                     shadowColor: theme.primary,
                     shadowOffset: { width: 0, height: 4 },
@@ -134,7 +134,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
                     size={isSmallScreen ? 18 : 20}
                     color={
                       isFocused 
-                        ? (route.name === 'Dashboard' ? theme.white : theme.primary)
+                        ? theme.white
                         : theme.gray[500]
                     }
                   />

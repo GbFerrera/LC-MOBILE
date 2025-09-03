@@ -1210,7 +1210,7 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.gray[200],
   },
   serviceItemSelected: {
-    backgroundColor: colors.gray[100],
+    backgroundColor: colors.primary + '20',
   },
   serviceItemCheckbox: {
     width: 20,

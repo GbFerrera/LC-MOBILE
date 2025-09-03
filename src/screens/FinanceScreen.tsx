@@ -419,7 +419,7 @@ export default function FinanceScreen() {
             </View>
           ) : (
             <LinearGradient
-              colors={currentDrawer ? [colors.success, '#66BB6A'] : [colors.error, '#EF5350']}
+              colors={currentDrawer ? [colors.primary, '#2d8a6b'] : [colors.error, '#EF5350']}
               style={styles.cashDrawerCard}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}

@@ -116,7 +116,7 @@ const LoginScreen: React.FC = () => {
       >
         <View style={styles.header}>
           <LinearGradient
-            colors={[theme.primary, '#00ACC1']}
+            colors={[theme.primary, '#2d8a6b']}
             style={styles.logoContainer}
           >
             <Ionicons name="calendar" size={40} color={theme.white} />
@@ -200,7 +200,7 @@ const LoginScreen: React.FC = () => {
             disabled={isLoading}
           >
             <LinearGradient
-              colors={[theme.primary, '#00ACC1']}
+              colors={[theme.primary, '#2d8a6b']}
               style={styles.loginButtonGradient}
             >
               {isLoading ? (

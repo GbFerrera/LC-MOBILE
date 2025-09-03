@@ -426,7 +426,7 @@ export default function DashboardScreen({ navigation }: any) {
         {/* Stats Cards */}
         <View style={styles.statsContainer}>
           <LinearGradient
-            colors={[colors.primary, '#4DB6AC']}
+            colors={[colors.primary, '#2d8a6b']}
             style={styles.mainCard}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
@@ -594,16 +594,16 @@ export default function DashboardScreen({ navigation }: any) {
               fetchDayOffDates();
             }}>
               <Surface style={styles.quickActionCard} elevation={2}>
-                <View style={[styles.quickActionIcon, { backgroundColor: colors.warning + '20' }]}>
-                  <Ionicons name="time-outline" size={24} color={colors.warning} />
+                <View style={[styles.quickActionIcon, { backgroundColor: colors.primary + '20' }]}>
+                  <Ionicons name="time-outline" size={24} color={colors.primary} />
                 </View>
                 <Text style={styles.quickActionText}>Adicionar Folga</Text>
               </Surface>
             </TouchableOpacity>
 
             <Surface style={styles.quickActionCard} elevation={2}>
-              <View style={[styles.quickActionIcon, { backgroundColor: colors.info + '20' }]}>
-                <Ionicons name="stats-chart-outline" size={24} color={colors.info} />
+              <View style={[styles.quickActionIcon, { backgroundColor: colors.primary + '20' }]}>
+                <Ionicons name="stats-chart-outline" size={24} color={colors.primary} />
               </View>
               <Text style={styles.quickActionText}>Relatórios</Text>
             </Surface>
@@ -646,6 +646,18 @@ export default function DashboardScreen({ navigation }: any) {
             <Text style={styles.calendarInstructions}>
               Selecione a data para criar um dia de folga
             </Text>
+
+            {/* Legenda das cores */}
+            <View style={styles.legendContainer}>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendColor, { backgroundColor: colors.primary }]} />
+                <Text style={styles.legendText}>Dias de folga</Text>
+              </View>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendColor, { backgroundColor: colors.gray[300] }]} />
+                <Text style={styles.legendText}>Dias livres</Text>
+              </View>
+            </View>
 
             {/* Week days header */}
             <View style={styles.weekDaysHeader}>
@@ -794,12 +806,12 @@ const styles = StyleSheet.create({
   },
   notificationBadge: {
     position: 'absolute',
-    top: 8,
-    right: 8,
+    top: 2,
+    right: 2,
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: colors.error,
+    backgroundColor: colors.primary,
   },
   statsContainer: {
     padding: spacing.md,
@@ -984,7 +996,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: colors.success,
+    backgroundColor: colors.primary,
     marginRight: spacing.sm,
   },
   quickActions: {
@@ -1125,13 +1137,36 @@ const styles = StyleSheet.create({
     color: colors.gray[400],
   },
   dayOffCalendarDay: {
-    backgroundColor: colors.error + '20',
+    backgroundColor: colors.primary + '20',
     borderWidth: 2,
-    borderColor: colors.error,
+    borderColor: colors.primary,
   },
   dayOffCalendarDayText: {
-    color: colors.error,
+    color: colors.primary,
     fontWeight: 'bold',
+  },
+  legendContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginVertical: 12,
+    paddingHorizontal: 20,
+    gap: 20,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  legendColor: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  legendText: {
+    fontSize: 12,
+    color: colors.gray[600],
+    fontWeight: '500',
   },
   loadingOverlay: {
     position: 'absolute',

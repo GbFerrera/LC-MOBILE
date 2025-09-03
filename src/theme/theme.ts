@@ -4,9 +4,9 @@ export const theme = {
   ...DefaultTheme,
   colors: {
     ...DefaultTheme.colors,
-    primary: '#00BFA5', // Cor principal verde/teal similar à imagem
-    secondary: '#4FC3F7',
-    tertiary: '#FFB74D',
+    primary: '#236F5D', // Verde azulado principal
+    secondary: '#2d8a6b',
+    tertiary: '#1a5a4a',
     background: '#F8F9FA',
     surface: '#FFFFFF',
     surfaceVariant: '#F5F5F5',
@@ -14,17 +14,17 @@ export const theme = {
     onSurfaceVariant: '#757575',
     outline: '#E0E0E0',
     error: '#FF5252',
-    success: '#4CAF50',
+    success: '#236F5D',
     warning: '#FF9800',
-    info: '#2196F3',
+    info: '#236F5D',
   },
   roundness: 12,
 };
 
 export const colors = {
-  primary: '#00BFA5',
-  secondary: '#4FC3F7', 
-  tertiary: '#FFB74D',
+  primary: '#236F5D',
+  secondary: '#2d8a6b', 
+  tertiary: '#1a5a4a',
   background: '#F8F9FA',
   white: '#FFFFFF',
   black: '#000000',
@@ -40,10 +40,10 @@ export const colors = {
     800: '#424242',
     900: '#212121',
   },
-  success: '#4CAF50',
+  success: '#236F5D',
   error: '#FF5252',
   warning: '#FF9800',
-  info: '#2196F3',
+  info: '#236F5D',
 };
 
 export const spacing = {
