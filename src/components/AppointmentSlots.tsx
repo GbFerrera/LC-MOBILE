@@ -35,6 +35,7 @@ interface Appointment {
   company_id?: number;
   professional_id: number;
   client_id: number | null;
+  client_name?: string;
   date: string;
   start_time: string;
   end_time: string;
@@ -336,7 +337,7 @@ const AppointmentSlots: React.FC<AppointmentSlotsProps> = ({
                 <View style={styles.clientRow}>
                   <Ionicons name="person-outline" size={16} color={colors.gray[600]} />
                   <Text style={styles.clientName}>
-                    {appointmentStartingHere.client?.name || 'Cliente não identificado'}
+                    {appointmentStartingHere.status === 'free' ? 'Intervalo' : (appointmentStartingHere.client?.name || appointmentStartingHere.client_name || 'Cliente não identificado')}
                   </Text>
                 </View>
                 
@@ -406,7 +407,7 @@ const AppointmentSlots: React.FC<AppointmentSlotsProps> = ({
                       <View style={styles.clientRow}>
                         <Ionicons name="person-outline" size={16} color={colors.gray[600]} />
                         <Text style={styles.clientName}>
-                          {appointment.client?.name || 'Cliente não identificado'}
+                          {appointment.client?.name || appointment.client_name || 'Cliente não identificado'}
                         </Text>
                       </View>
                       {appointment.services.length > 0 && (
@@ -500,7 +501,7 @@ const AppointmentSlots: React.FC<AppointmentSlotsProps> = ({
                   <View style={styles.clientRow}>
                     <Ionicons name="person-outline" size={16} color={colors.gray[600]} />
                     <Text style={styles.clientName}>
-                      {appointment.client?.name || 'Cliente não identificado'}
+                      {appointment.status === 'free' ? 'Intervalo' : (appointment.client?.name || appointment.client_name || 'Cliente não identificado')}
                     </Text>
                   </View>
                   

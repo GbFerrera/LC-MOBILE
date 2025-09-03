@@ -2,14 +2,16 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
-  ScrollView,
-  TouchableOpacity,
-  ActivityIndicator,
-  SafeAreaView,
-  RefreshControl,
-  Modal,
   StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Modal,
   TextInput,
+  SafeAreaView,
+  Alert,
+  Switch,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { Surface, FAB, Chip, Divider, Button } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
@@ -111,6 +113,12 @@ export default function AgendaScreen({ navigation }: any) {
   const [serviceSearch, setServiceSearch] = useState('');
   const [selectedServices, setSelectedServices] = useState<{service_id: number, service_name: string, quantity: number}[]>([]);
   const [isCreating, setIsCreating] = useState(false);
+  const [isFreeInterval, setIsFreeInterval] = useState(false);
+  const [freeIntervalData, setFreeIntervalData] = useState({
+    start_time: '',
+    end_time: '',
+    notes: ''
+  });
 
   // Get professional ID from authenticated user
   const professionalId = user ? parseInt(user.id) : null;
@@ -123,7 +131,9 @@ export default function AgendaScreen({ navigation }: any) {
       setLoading(true);
       setError(null);
       
-      const formattedDate = format(selectedDate, 'yyyy-MM-dd');
+      const formattedDate = selectedDate.getFullYear() + '-' + 
+        String(selectedDate.getMonth() + 1).padStart(2, '0') + '-' + 
+        String(selectedDate.getDate()).padStart(2, '0');
       
       // Fetch schedule and appointments in one call using /schedules route
       setLoadingSlots(true);
@@ -377,12 +387,99 @@ export default function AgendaScreen({ navigation }: any) {
     return `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`;
   };
 
+  // Função para criar intervalo livre
+  const createFreeInterval = async () => {
+    try {
+      setIsCreating(true);
+
+      // Validações para intervalo livre
+      if (!freeIntervalData.start_time) {
+        throw new Error('Horário de início é obrigatório');
+      }
+
+      if (!freeIntervalData.end_time) {
+        throw new Error('Horário de término é obrigatório');
+      }
+
+      // Obter credenciais
+      const token = await AsyncStorage.getItem('authToken');
+      const companyId = await AsyncStorage.getItem('companyId');
+
+      if (!token || !companyId) {
+        throw new Error('Credenciais não encontradas');
+      }
+
+      // Preparar dados para intervalo livre
+      const intervalPayload = {
+        company_id: parseInt(companyId),
+        professional_id: professionalId,
+        appointment_date: format(selectedDate, 'yyyy-MM-dd'),
+        start_time: freeIntervalData.start_time,
+        end_time: freeIntervalData.end_time,
+        notes: freeIntervalData.notes || 'Intervalo livre'
+      };
+
+      console.log('Enviando intervalo livre:', intervalPayload);
+
+      // Enviar para API
+      const response = await api.post('/schedules/free-interval', intervalPayload);
+      
+      console.log('Resposta da API:', response);
+
+      // Verificar se houve sucesso
+      if (response.error) {
+        throw new Error(response.error);
+      }
+
+      console.log('Intervalo livre criado com sucesso');
+
+      // Fechar modal e limpar dados
+      setShowCreateDialog(false);
+      setSelectedSlot(null);
+      setIsFreeInterval(false);
+      setFreeIntervalData({
+        start_time: '',
+        end_time: '',
+        notes: ''
+      });
+
+      // Recarregar agendamentos da data selecionada e de hoje
+      try {
+        await Promise.all([
+          fetchAppointments(),
+          fetchTodayAppointments()
+        ]);
+        console.log('Agendamentos recarregados');
+      } catch (reloadError) {
+        console.error('Erro ao recarregar agendamentos:', reloadError);
+      }
+
+    } catch (error: any) {
+      console.error('Erro ao criar intervalo livre:', error);
+      
+      // Mostrar erro para o usuário
+      if (error.message) {
+        alert(`Erro ao criar intervalo livre: ${error.message}`);
+      } else {
+        alert('Erro ao criar intervalo livre. Tente novamente.');
+      }
+    } finally {
+      console.log('Finalizando criação de intervalo livre, setIsCreating(false)');
+      setIsCreating(false);
+    }
+  };
+
   // Função para criar agendamento
   const createAppointment = async () => {
     try {
       setIsCreating(true);
 
-      // Validações básicas
+      // Se for intervalo livre, usar função específica
+      if (isFreeInterval) {
+        return await createFreeInterval();
+      }
+
+      // Validações básicas para agendamento normal
       if (!newAppointment.client_id) {
         throw new Error('Selecione um cliente');
       }
@@ -426,7 +523,16 @@ export default function AgendaScreen({ navigation }: any) {
       console.log('Enviando agendamento:', appointmentPayload);
 
       // Enviar para API
-      await api.post('/appointments', appointmentPayload);
+      const response = await api.post('/appointments', appointmentPayload);
+      
+      console.log('Resposta da API:', response);
+
+      // Verificar se houve sucesso
+      if (response.error) {
+        throw new Error(response.error);
+      }
+
+      console.log('Agendamento criado com sucesso');
 
       // Fechar modal e limpar dados
       setShowCreateDialog(false);
@@ -438,21 +544,34 @@ export default function AgendaScreen({ navigation }: any) {
         appointment_date: '',
         start_time: '',
         end_time: '',
-        status: 'pending',
+        status: 'confirmed',
         notes: '',
         services: []
       });
 
       // Recarregar agendamentos da data selecionada e de hoje
-      await Promise.all([
-        fetchAppointments(),
-        fetchTodayAppointments()
-      ]);
+      try {
+        await Promise.all([
+          fetchAppointments(),
+          fetchTodayAppointments()
+        ]);
+        console.log('Agendamentos recarregados');
+      } catch (reloadError) {
+        console.error('Erro ao recarregar agendamentos:', reloadError);
+        // Não impedir o fechamento do loading por erro no reload
+      }
 
     } catch (error: any) {
       console.error('Erro ao criar agendamento:', error);
-      // Aqui você pode adicionar um toast ou alert para mostrar o erro
+      
+      // Mostrar erro para o usuário
+      if (error.message) {
+        alert(`Erro ao criar agendamento: ${error.message}`);
+      } else {
+        alert('Erro ao criar agendamento. Tente novamente.');
+      }
     } finally {
+      console.log('Finalizando criação de agendamento, setIsCreating(false)');
       setIsCreating(false);
     }
   };
@@ -628,7 +747,9 @@ export default function AgendaScreen({ navigation }: any) {
                 appointments={appointments}
                 onSlotClick={(time, isEncaixe, encaixeEndTime) => {
                   // Preparar dados para o novo agendamento
-                  const formattedDate = format(selectedDate, 'yyyy-MM-dd');
+                  const formattedDate = selectedDate.getFullYear() + '-' + 
+                    String(selectedDate.getMonth() + 1).padStart(2, '0') + '-' + 
+                    String(selectedDate.getDate()).padStart(2, '0');
                   setSelectedSlot({ time, isEncaixe: isEncaixe || false, encaixeEndTime });
                   
                   // Resetar o formulário
@@ -638,7 +759,7 @@ export default function AgendaScreen({ navigation }: any) {
                     appointment_date: formattedDate,
                     start_time: time + ':00',
                     end_time: (encaixeEndTime || time) + ':00',
-                    status: 'pending',
+                    status: 'confirmed',
                     notes: '',
                     services: []
                   });
@@ -664,7 +785,9 @@ export default function AgendaScreen({ navigation }: any) {
         color={colors.white}
         onPress={() => {
           // Preparar dados para o novo agendamento
-          const formattedDate = format(selectedDate, 'yyyy-MM-dd');
+          const formattedDate = selectedDate.getFullYear() + '-' + 
+            String(selectedDate.getMonth() + 1).padStart(2, '0') + '-' + 
+            String(selectedDate.getDate()).padStart(2, '0');
           const currentTime = new Date();
           const hours = currentTime.getHours().toString().padStart(2, '0');
           const minutes = Math.ceil(currentTime.getMinutes() / 15) * 15;
@@ -680,7 +803,7 @@ export default function AgendaScreen({ navigation }: any) {
             appointment_date: formattedDate,
             start_time: time + ':00',
             end_time: time + ':00', // Será ajustado com base nos serviços selecionados
-            status: 'pending',
+            status: 'confirmed',
             notes: '',
             services: []
           });
@@ -784,13 +907,19 @@ export default function AgendaScreen({ navigation }: any) {
             <ScrollView showsVerticalScrollIndicator={false} style={styles.dialogContent}>
               <View style={styles.dialogHeader}>
                 <Text style={styles.dialogTitle}>
-                  Novo Agendamento
+                  {isFreeInterval ? 'Novo Intervalo Livre' : 'Novo Agendamento'}
                 </Text>
                 <TouchableOpacity 
                   onPress={() => {
                     setShowCreateDialog(false);
                     setSelectedSlot(null);
                     setSelectedServices([]);
+                    setIsFreeInterval(false);
+                    setFreeIntervalData({
+                      start_time: '',
+                      end_time: '',
+                      notes: ''
+                    });
                   }}
                   style={styles.closeButton}
                 >
@@ -802,7 +931,10 @@ export default function AgendaScreen({ navigation }: any) {
                 <View style={styles.slotInfoContainer}>
                   <Ionicons name="calendar-outline" size={20} color={colors.primary} />
                   <Text style={styles.slotInfoText}>
-                    {format(new Date(newAppointment.appointment_date), 'dd/MM/yyyy')}
+                    {newAppointment.appointment_date ? 
+                      new Date(newAppointment.appointment_date + 'T00:00:00').toLocaleDateString('pt-BR') : 
+                      selectedDate.toLocaleDateString('pt-BR')
+                    }
                   </Text>
                   <Ionicons name="time-outline" size={20} color={colors.primary} style={{ marginLeft: 12 }} />
                   <Text style={styles.slotInfoText}>
@@ -811,10 +943,103 @@ export default function AgendaScreen({ navigation }: any) {
                   </Text>
                 </View>
               )}
-              
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Cliente</Text>
-                <View style={styles.searchContainer}>
+
+              {/* Switch para Intervalo Livre */}
+              <View style={styles.switchContainer}>
+                <View style={styles.switchRow}>
+                  <Ionicons 
+                    name="time-outline" 
+                    size={20} 
+                    color={isFreeInterval ? colors.primary : colors.gray[500]} 
+                  />
+                  <Text style={[styles.switchLabel, { color: isFreeInterval ? colors.primary : colors.gray[700] }]}>
+                    Intervalo Livre
+                  </Text>
+                  <Switch
+                    value={isFreeInterval}
+                    onValueChange={(value: boolean) => {
+                      setIsFreeInterval(value);
+                      if (value) {
+                        // Limpar dados de agendamento quando ativar intervalo livre
+                        setNewAppointment(prev => ({
+                          ...prev,
+                          client_id: '',
+                          notes: ''
+                        }));
+                        setSelectedServices([]);
+                        // Preencher horários do slot selecionado se disponível
+                        if (selectedSlot) {
+                          setFreeIntervalData(prev => ({
+                            ...prev,
+                            start_time: selectedSlot.time,
+                            end_time: selectedSlot.encaixeEndTime || ''
+                          }));
+                        }
+                      } else {
+                        // Limpar dados de intervalo livre quando desativar
+                        setFreeIntervalData({
+                          start_time: '',
+                          end_time: '',
+                          notes: ''
+                        });
+                      }
+                    }}
+                    trackColor={{ false: colors.gray[300], true: colors.primary + '30' }}
+                    thumbColor={isFreeInterval ? colors.primary : colors.gray[500]}
+                  />
+                </View>
+              </View>
+
+              {/* Campos específicos para Intervalo Livre */}
+              {isFreeInterval ? (
+                <>
+                  <View style={styles.formGroup}>
+                    <Text style={styles.formLabel}>Horário de Início</Text>
+                    <View style={styles.timeInputContainer}>
+                      <Ionicons name="time-outline" size={20} color={colors.gray[500]} style={styles.timeIcon} />
+                      <TextInput
+                        style={styles.timeInput}
+                        placeholder="HH:MM"
+                        value={freeIntervalData.start_time}
+                        onChangeText={(text) => setFreeIntervalData(prev => ({ ...prev, start_time: text }))}
+                        keyboardType="numeric"
+                        maxLength={5}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.formGroup}>
+                    <Text style={styles.formLabel}>Horário de Término</Text>
+                    <View style={styles.timeInputContainer}>
+                      <Ionicons name="time-outline" size={20} color={colors.gray[500]} style={styles.timeIcon} />
+                      <TextInput
+                        style={styles.timeInput}
+                        placeholder="HH:MM"
+                        value={freeIntervalData.end_time}
+                        onChangeText={(text) => setFreeIntervalData(prev => ({ ...prev, end_time: text }))}
+                        keyboardType="numeric"
+                        maxLength={5}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.formGroup}>
+                    <Text style={styles.formLabel}>Descrição do Intervalo</Text>
+                    <TextInput
+                      style={styles.notesInput}
+                      placeholder="Descrição do intervalo livre"
+                      value={freeIntervalData.notes}
+                      onChangeText={(text) => setFreeIntervalData(prev => ({ ...prev, notes: text }))}
+                      multiline
+                      numberOfLines={3}
+                    />
+                  </View>
+                </>
+              ) : (
+                <>
+                  <View style={styles.formGroup}>
+                    <Text style={styles.formLabel}>Cliente</Text>
+                    <View style={styles.searchContainer}>
                   <Ionicons name="search-outline" size={20} color={colors.gray[500]} style={styles.searchIcon} />
                   <TextInput
                     style={styles.searchInput}
@@ -910,19 +1135,21 @@ export default function AgendaScreen({ navigation }: any) {
                     )}
                   </ScrollView>
                 </View>
-              </View>
-              
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Observações</Text>
-                <TextInput
-                  style={styles.notesInput}
-                  placeholder="Adicione observações sobre o agendamento"
-                  multiline
-                  numberOfLines={3}
-                  value={newAppointment.notes}
-                  onChangeText={(text) => setNewAppointment({...newAppointment, notes: text})}
-                />
-              </View>
+                  </View>
+                  
+                  <View style={styles.formGroup}>
+                    <Text style={styles.formLabel}>Observações</Text>
+                    <TextInput
+                      style={styles.notesInput}
+                      placeholder="Adicione observações sobre o agendamento"
+                      multiline
+                      numberOfLines={3}
+                      value={newAppointment.notes}
+                      onChangeText={(text) => setNewAppointment({...newAppointment, notes: text})}
+                    />
+                  </View>
+                </>
+              )}
               
               <View style={styles.buttonContainer}>
                 <Button
@@ -941,10 +1168,10 @@ export default function AgendaScreen({ navigation }: any) {
                   mode="contained"
                   style={styles.createButton}
                   loading={isCreating}
-                  disabled={isCreating || !newAppointment.client_id || selectedServices.length === 0}
+                  disabled={isCreating || (isFreeInterval ? (!freeIntervalData.start_time || !freeIntervalData.end_time) : (!newAppointment.client_id || selectedServices.length === 0))}
                   onPress={createAppointment}
                 >
-                  {isCreating ? 'Criando...' : 'Criar Agendamento'}
+                  {isCreating ? 'Criando...' : (isFreeInterval ? 'Criar Intervalo Livre' : 'Criar Agendamento')}
                 </Button>
               </View>
             </ScrollView>
@@ -1731,5 +1958,45 @@ const styles = StyleSheet.create({
   closeButton: {
     padding: spacing.sm,
     marginLeft: spacing.sm,
+  },
+  // Switch Styles
+  switchContainer: {
+    backgroundColor: colors.gray[50],
+    borderRadius: 12,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.gray[200],
+  },
+  switchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  switchLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: spacing.sm,
+    flex: 1,
+  },
+  // Time Input Styles
+  timeInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.gray[300],
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  timeIcon: {
+    marginRight: spacing.sm,
+  },
+  timeInput: {
+    flex: 1,
+    fontSize: 16,
+    color: colors.gray[900],
+    paddingVertical: spacing.xs,
   },
 });
