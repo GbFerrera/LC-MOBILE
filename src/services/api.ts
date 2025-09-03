@@ -1,8 +1,7 @@
+import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { baseURL } from './base_URL';
 
-// Configuração da API
-export const API_BASE_URL = 'http://localhost:3131';
+const API_BASE_URL = 'https://api.linkcallendar.com';
 
 interface ApiResponse<T> {
   data?: T;
@@ -229,6 +228,18 @@ export const serviceService = {
   
   delete: (id: number) =>
     api.delete(`/service/${id}`),
+};
+
+export const scheduleService = {
+  createDayOff: (data: { professional_id: number; date: string }) =>
+    api.post('/schedules/day-off', data),
+  
+  getSpecificDays: (professionalId: number) =>
+    api.get(`/schedules/specific-days/${professionalId}`),
+  
+  removeDayOff: async (professionalId: number, date: string) => {
+    return api.delete(`/schedules/specific-day-off/${professionalId}?date=${date}`);
+  },
 };
 
 // Tipos para autenticação

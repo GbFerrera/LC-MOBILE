@@ -7,13 +7,17 @@ import {
   SafeAreaView,
   Dimensions,
   ActivityIndicator,
+  TouchableOpacity,
+  Modal,
+  Alert,
 } from 'react-native';
 import { Surface, Card } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography } from '../theme/theme';
 import { useAuth } from '../contexts/AuthContext';
-import { api, Appointment, Professional } from '../services/api';
+import { api, Appointment, Professional, scheduleService } from '../services/api';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay } from 'date-fns';
 const { width } = Dimensions.get('window');
 
 interface Service {
@@ -62,7 +66,7 @@ interface ScheduleResponse {
   appointments: AppointmentData[];
 }
 
-export default function DashboardScreen() {
+export default function DashboardScreen({ navigation }: any) {
   const { user } = useAuth();
   const [scheduleData, setScheduleData] = useState<ScheduleResponse | null>(null);
   const [weeklyData, setWeeklyData] = useState<AppointmentData[]>([]);
@@ -72,6 +76,28 @@ export default function DashboardScreen() {
   const [isLoadingMonthly, setIsLoadingMonthly] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
+  const [showDayOffModal, setShowDayOffModal] = useState(false);
+  const [calendarDate, setCalendarDate] = useState(new Date());
+  const [isCreatingDayOff, setIsCreatingDayOff] = useState(false);
+  const [dayOffDates, setDayOffDates] = useState<string[]>([]);
+  const [isRemovingDayOff, setIsRemovingDayOff] = useState(false);
+
+  // Função para buscar dias de folga do profissional
+  const fetchDayOffDates = async () => {
+    if (!user?.id) return;
+    
+    try {
+      const response = await scheduleService.getSpecificDays(Number(user.id));
+      if (response.data && Array.isArray(response.data)) {
+        const dates = response.data
+          .filter((item: any) => item.is_day_off)
+          .map((item: any) => item.date);
+        setDayOffDates(dates);
+      }
+    } catch (error) {
+      console.error('Erro ao buscar dias de folga:', error);
+    }
+  };
 
   // Função para buscar agendamentos de um período
   const fetchAppointmentsForPeriod = async (startDate: string, endDate: string): Promise<AppointmentData[]> => {
@@ -213,6 +239,149 @@ export default function DashboardScreen() {
     monthRevenue: calculateRevenue(monthlyData),
   };
 
+  // Função para criar dia de folga
+  const createDayOff = async (selectedDate: Date) => {
+    console.log('createDayOff called with:', selectedDate);
+    
+    if (!user?.id) {
+      Alert.alert('Erro', 'Usuário não encontrado');
+      return;
+    }
+
+    const formattedDate = format(selectedDate, 'yyyy-MM-dd');
+    console.log('Formatted date:', formattedDate);
+    
+    Alert.alert(
+      'Marcar Folga',
+      `Deseja marcar uma folga nesse dia ${selectedDate.getDate()}/${selectedDate.getMonth() + 1}?`,
+      [
+        {
+          text: 'Cancelar',
+          style: 'cancel',
+        },
+        {
+          text: 'Marcar',
+          onPress: async () => {
+            try {
+              setIsCreatingDayOff(true);
+              
+              const response = await scheduleService.createDayOff({
+                professional_id: parseInt(user.id),
+                date: formattedDate
+              });
+
+              if (response.error) {
+                Alert.alert('Erro', response.error);
+              } else {
+                Alert.alert('Sucesso', 'Folga criada com sucesso!');
+                // Atualizar a lista de dias de folga para mostrar o novo dia
+                setDayOffDates(prev => [...prev, formattedDate]);
+              }
+            } catch (error) {
+              Alert.alert('Erro', 'Falha ao criar folga. Tente novamente.');
+            } finally {
+              setIsCreatingDayOff(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // Função para remover dia de folga - NOVA IMPLEMENTAÇÃO
+  const handleRemoveDayOff = async (date: string) => {
+    if (!user?.id) {
+      Alert.alert('Erro', 'Usuário não encontrado');
+      return;
+    }
+
+    // Formatar data para exibição
+    const dateObj = new Date(date + 'T00:00:00');
+    const displayDate = `${dateObj.getDate()}/${dateObj.getMonth() + 1}/${dateObj.getFullYear()}`;
+    
+    Alert.alert(
+      'Remover Folga',
+      `Deseja remover a folga do dia ${displayDate}?`,
+      [
+        {
+          text: 'Cancelar',
+          style: 'cancel',
+        },
+        {
+          text: 'Remover',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setIsRemovingDayOff(true);
+              
+              console.log('Removendo dia de folga:', {
+                professionalId: Number(user.id),
+                date: date
+              });
+              
+              const response = await scheduleService.removeDayOff(Number(user.id), date);
+              
+              if (response.error) {
+                console.error('Erro na API:', response.error);
+                Alert.alert('Erro', response.error);
+                return;
+              }
+              
+              console.log('Folga removida com sucesso');
+              
+              // Atualizar lista local removendo a data
+              setDayOffDates(prev => prev.filter(d => d !== date));
+              
+              Alert.alert('Sucesso', 'Folga removida com sucesso!');
+              
+              // Recarregar dados para garantir sincronização
+              if (user?.id) {
+                fetchDayOffDates();
+              }
+              
+            } catch (error) {
+              console.error('Erro ao remover folga:', error);
+              Alert.alert('Erro', 'Falha ao remover folga. Tente novamente.');
+            } finally {
+              setIsRemovingDayOff(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // Gerar dias do calendário
+  const generateCalendarDays = () => {
+    const start = startOfMonth(calendarDate);
+    const end = endOfMonth(calendarDate);
+    const days = eachDayOfInterval({ start, end });
+    
+    // Adicionar células vazias para os dias antes do primeiro dia do mês
+    const startDayWeek = getDay(start);
+    const emptyDays = Array(startDayWeek).fill(null);
+    
+    return [...emptyDays, ...days];
+  };
+
+  // Navegar para o mês anterior
+  const goToPreviousMonth = () => {
+    setCalendarDate(prev => {
+      const newDate = new Date(prev);
+      newDate.setMonth(prev.getMonth() - 1);
+      return newDate;
+    });
+  };
+
+  // Navegar para o próximo mês
+  const goToNextMonth = () => {
+    setCalendarDate(prev => {
+      const newDate = new Date(prev);
+      newDate.setMonth(prev.getMonth() + 1);
+      return newDate;
+    });
+  };
+
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
@@ -289,9 +458,9 @@ export default function DashboardScreen() {
                   return (
                     <View 
                       key={index} 
-                      style={[styles.calendarDay, isToday && styles.calendarDayActive]}
+                      style={[styles.calendarDay, isToday && styles.todayCalendarDay]}
                     >
-                      <Text style={[styles.calendarDayText, isToday && styles.calendarDayTextActive]}>
+                      <Text style={[styles.calendarDayText, isToday && styles.todayCalendarDayText]}>
                         {date.getDate()}
                       </Text>
                     </View>
@@ -411,19 +580,26 @@ export default function DashboardScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Ações Rápidas</Text>
           <View style={styles.quickActions}>
-            <Surface style={styles.quickActionCard} elevation={2}>
-              <View style={[styles.quickActionIcon, { backgroundColor: colors.primary + '20' }]}>
-                <Ionicons name="add" size={24} color={colors.primary} />
-              </View>
-              <Text style={styles.quickActionText}>Novo Agendamento</Text>
-            </Surface>
+            <TouchableOpacity onPress={() => navigation.navigate('Agenda')}>
+              <Surface style={styles.quickActionCard} elevation={2}>
+                <View style={[styles.quickActionIcon, { backgroundColor: colors.primary + '20' }]}>
+                  <Ionicons name="add" size={24} color={colors.primary} />
+                </View>
+                <Text style={styles.quickActionText}>Novo Agendamento</Text>
+              </Surface>
+            </TouchableOpacity>
 
-            <Surface style={styles.quickActionCard} elevation={2}>
-              <View style={[styles.quickActionIcon, { backgroundColor: colors.warning + '20' }]}>
-                <Ionicons name="time-outline" size={24} color={colors.warning} />
-              </View>
-              <Text style={styles.quickActionText}>Adicionar Folga</Text>
-            </Surface>
+            <TouchableOpacity onPress={() => {
+              setShowDayOffModal(true);
+              fetchDayOffDates();
+            }}>
+              <Surface style={styles.quickActionCard} elevation={2}>
+                <View style={[styles.quickActionIcon, { backgroundColor: colors.warning + '20' }]}>
+                  <Ionicons name="time-outline" size={24} color={colors.warning} />
+                </View>
+                <Text style={styles.quickActionText}>Adicionar Folga</Text>
+              </Surface>
+            </TouchableOpacity>
 
             <Surface style={styles.quickActionCard} elevation={2}>
               <View style={[styles.quickActionIcon, { backgroundColor: colors.info + '20' }]}>
@@ -435,6 +611,119 @@ export default function DashboardScreen() {
         </View>
         </ScrollView>
       </SafeAreaView>
+
+      {/* Modal de Calendário para Folga */}
+      <Modal
+        visible={showDayOffModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowDayOffModal(false)}
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowDayOffModal(false)}>
+              <Ionicons name="close" size={24} color={colors.gray[800]} />
+            </TouchableOpacity>
+            
+            <View style={styles.monthNavigation}>
+              <TouchableOpacity onPress={goToPreviousMonth} style={styles.navButton}>
+                <Ionicons name="chevron-back" size={20} color={colors.primary} />
+              </TouchableOpacity>
+              
+              <Text style={styles.modalTitle}>
+                {format(calendarDate, 'MMMM yyyy')}
+              </Text>
+              
+              <TouchableOpacity onPress={goToNextMonth} style={styles.navButton}>
+                <Ionicons name="chevron-forward" size={20} color={colors.primary} />
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.modalHeaderSpacer} />
+          </View>
+
+          <View style={styles.calendarContainer}>
+            <Text style={styles.calendarInstructions}>
+              Selecione a data para criar um dia de folga
+            </Text>
+
+            {/* Week days header */}
+            <View style={styles.weekDaysHeader}>
+              {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((day) => (
+                <Text key={day} style={styles.weekDayText}>
+                  {day}
+                </Text>
+              ))}
+            </View>
+
+            {/* Calendar grid */}
+            <View style={styles.modalCalendarGrid}>
+              {generateCalendarDays().map((day, index) => {
+                if (!day) {
+                  return <View key={index} style={styles.emptyCalendarDay} />;
+                }
+
+                const isToday = day.toDateString() === new Date().toDateString();
+                const isPast = day < new Date().setHours(0, 0, 0, 0);
+                const dayString = format(day, 'yyyy-MM-dd');
+                const isDayOff = dayOffDates.includes(dayString);
+
+                return (
+                  <TouchableOpacity
+                    key={day.getTime()}
+                    style={[
+                      styles.modalCalendarDay,
+                      isToday && styles.todayCalendarDay,
+                      isPast && styles.pastCalendarDay,
+                      isDayOff && styles.dayOffCalendarDay,
+                    ]}
+                    onPress={() => {
+                      console.log('Calendar day clicked:', {
+                        date: day.toISOString().split('T')[0],
+                        isPast,
+                        isDayOff,
+                        isCreatingDayOff,
+                        isRemovingDayOff
+                      });
+                      
+                      if (!isPast) {
+                        if (isDayOff) {
+                          console.log('Calling handleRemoveDayOff');
+                          handleRemoveDayOff(format(day, 'yyyy-MM-dd'));
+                        } else {
+                          console.log('Calling createDayOff');
+                          createDayOff(day);
+                        }
+                      }
+                    }}
+                    disabled={isPast || isCreatingDayOff || isRemovingDayOff}
+                  >
+                    <Text
+                      style={[
+                        styles.modalCalendarDayText,
+                        isToday && styles.todayCalendarDayText,
+                        isPast && styles.pastCalendarDayText,
+                        isDayOff && styles.dayOffCalendarDayText,
+                      ]}
+                    >
+                      {day.getDate()}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {(isCreatingDayOff || isRemovingDayOff) && (
+              <View style={styles.loadingOverlay}>
+                <ActivityIndicator size="large" color={colors.primary} />
+                <Text style={styles.loadingText}>
+                  {isCreatingDayOff ? 'Criando folga...' : 'Removendo folga...'}
+                </Text>
+              </View>
+            )}
+          </View>
+        </SafeAreaView>
+      </Modal>
     </View>
   );
 }
@@ -563,25 +852,6 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: 14,
     marginBottom: spacing.sm,
-  },
-  calendarGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  calendarDay: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  calendarDayActive: {
-    backgroundColor: colors.white,
-  },
-  calendarDayText: {
-    color: colors.white + 'CC',
-    fontSize: 14,
-    fontWeight: '500',
   },
   calendarDayTextActive: {
     color: colors.primary,
@@ -743,5 +1013,134 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: colors.gray[700],
     fontWeight: '500',
+  },
+  // Modal styles
+  modalContainer: {
+    flex: 1,
+    backgroundColor: colors.white,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.gray[200],
+  },
+  monthNavigation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+  },
+  navButton: {
+    padding: spacing.sm,
+    borderRadius: 8,
+    backgroundColor: colors.gray[100],
+    marginHorizontal: spacing.md,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.gray[900],
+    textTransform: 'capitalize',
+  },
+  modalHeaderSpacer: {
+    width: 24,
+  },
+  calendarContainer: {
+    flex: 1,
+    padding: spacing.md,
+  },
+  calendarInstructions: {
+    fontSize: 16,
+    color: colors.gray[600],
+    textAlign: 'center',
+    marginBottom: spacing.lg,
+  },
+  weekDaysHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: spacing.sm,
+  },
+  weekDayText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.gray[500],
+    textAlign: 'center',
+    width: 40,
+  },
+  calendarGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  modalCalendarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-around',
+  },
+  emptyCalendarDay: {
+    width: 40,
+    height: 40,
+    margin: 2,
+  },
+  calendarDay: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCalendarDay: {
+    width: 40,
+    height: 40,
+    margin: 2,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.gray[50],
+  },
+  todayCalendarDay: {
+    backgroundColor: colors.white,
+  },
+  pastCalendarDay: {
+    backgroundColor: colors.gray[100],
+    opacity: 0.5,
+  },
+  calendarDayText: {
+    color: colors.white + 'CC',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  modalCalendarDayText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: colors.gray[900],
+  },
+  todayCalendarDayText: {
+    color: colors.primary,
+    fontWeight: 'bold',
+  },
+  pastCalendarDayText: {
+    color: colors.gray[400],
+  },
+  dayOffCalendarDay: {
+    backgroundColor: colors.error + '20',
+    borderWidth: 2,
+    borderColor: colors.error,
+  },
+  dayOffCalendarDayText: {
+    color: colors.error,
+    fontWeight: 'bold',
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: colors.white + 'CC',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

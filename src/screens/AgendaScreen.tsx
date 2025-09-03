@@ -99,7 +99,7 @@ export default function AgendaScreen({ navigation }: any) {
     appointment_date: '',
     start_time: '',
     end_time: '',
-    status: 'pending',
+    status: 'confirmed ',
     notes: '',
     services: []
   });
@@ -152,8 +152,9 @@ export default function AgendaScreen({ navigation }: any) {
       
       if (token && companyId) {
         const response = await api.get('/clients');
-        setClients(response.data || []);
-        setFilteredClients(response.data || []);
+        const clientsData = Array.isArray(response.data) ? response.data : [];
+        setClients(clientsData);
+        setFilteredClients(clientsData);
       }
     } catch (err) {
       console.error('Failed to fetch clients:', err);
@@ -253,6 +254,20 @@ export default function AgendaScreen({ navigation }: any) {
       fetchServices();
     }, [fetchAppointments, fetchTodayAppointments, fetchClients, fetchServices])
   );
+
+  // Force refresh today's appointments when appointments change or when screen loads
+  useEffect(() => {
+    if (professionalId) {
+      fetchTodayAppointments();
+    }
+  }, [appointments, professionalId]);
+
+  // Also refresh today's appointments when the component mounts
+  useEffect(() => {
+    if (professionalId) {
+      fetchTodayAppointments();
+    }
+  }, [professionalId]);
 
   const generateWeekDays = () => {
     const days = [];
@@ -428,8 +443,11 @@ export default function AgendaScreen({ navigation }: any) {
         services: []
       });
 
-      // Recarregar agendamentos
-      await fetchAppointments();
+      // Recarregar agendamentos da data selecionada e de hoje
+      await Promise.all([
+        fetchAppointments(),
+        fetchTodayAppointments()
+      ]);
 
     } catch (error: any) {
       console.error('Erro ao criar agendamento:', error);
@@ -571,18 +589,6 @@ export default function AgendaScreen({ navigation }: any) {
       
       {/* Appointments and Slots List */}
       <View style={styles.appointmentsList}>
-        <View style={styles.appointmentsHeader}>
-          <Text style={styles.appointmentsTitle}>
-            {selectedDate.toLocaleDateString('pt-BR', {
-              day: 'numeric',
-              month: 'long',
-              year: 'numeric',
-            }).replace(/^\w/, c => c.toUpperCase())}
-          </Text>
-          <Text style={styles.appointmentsCount}>
-            {appointments.length} agendamento{appointments.length !== 1 ? 's' : ''}
-          </Text>
-        </View>
 
         {loading || loadingSlots ? (
           <View style={styles.loadingContainer}>
@@ -1321,7 +1327,7 @@ const styles = StyleSheet.create({
   },
   todaySection: {
     backgroundColor: colors.white,
-    paddingVertical: spacing.lg,
+    paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
   },
   todayScrollContainer: {
@@ -1338,39 +1344,39 @@ const styles = StyleSheet.create({
   },
   todayAppointmentCard: {
     backgroundColor: colors.white,
-    borderRadius: 12,
-    padding: 16,
-    marginRight: 12,
-    width: 120,
+    borderRadius: 8,
+    padding: 10,
+    marginRight: 8,
+    width: 100,
     borderWidth: 1,
     borderColor: colors.gray[200],
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    shadowOpacity: 0.08,
+    shadowRadius: 1,
+    elevation: 1,
   },
   todayTimeText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
     color: colors.primary,
-    marginBottom: 6,
+    marginBottom: 4,
   },
   todayClientName: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '500',
     color: colors.gray[800],
-    marginBottom: 8,
-    lineHeight: 16,
+    marginBottom: 6,
+    lineHeight: 14,
   },
   todayStatusBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 4,
-    borderRadius: 8,
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderRadius: 6,
     alignSelf: 'flex-start',
   },
   todayStatusText: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '600',
     color: colors.white,
     textTransform: 'capitalize',
