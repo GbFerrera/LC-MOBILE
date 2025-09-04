@@ -84,6 +84,7 @@ export default function FinanceScreen() {
   // Hooks separados para cada BottomSheet
   const transactionBottomSheet = useBottomSheet();
   const drawerBottomSheet = useBottomSheet();
+  const closeDrawerBottomSheet = useBottomSheet();
   const commandDetailsBottomSheet = useBottomSheet();
   const paymentBottomSheet = useBottomSheet();
   const { user } = useAuth();
@@ -98,6 +99,8 @@ export default function FinanceScreen() {
   const [initialValue, setInitialValue] = useState('');
   const [drawerNotes, setDrawerNotes] = useState('');
   const [openingDrawer, setOpeningDrawer] = useState(false);
+  const [finalValue, setFinalValue] = useState('');
+  const [isCloseDrawerModalOpen, setIsCloseDrawerModalOpen] = useState(false);
 
   // Estados para transações financeiras
   const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
@@ -774,25 +777,43 @@ export default function FinanceScreen() {
   };
 
   const handleCloseDrawer = async () => {
+    // Abrir modal para inserir valor final
+    setIsCloseDrawerModalOpen(true);
+    closeDrawerBottomSheet.openBottomSheet();
+  };
+
+  const confirmCloseDrawer = async () => {
     console.log('=== FECHAR GAVETA - INÍCIO ===');
     console.log('user?.company_id:', user?.company_id);
     console.log('currentDrawer:', currentDrawer);
     console.log('user?.id:', user?.id);
-    console.log('cashBalance:', cashBalance);
+    console.log('finalValue:', finalValue);
     
-    if (!user?.company_id || !currentDrawer || !user?.id) {
+    if (!user?.company_id || !currentDrawer || !user?.id || !finalValue) {
       console.log('❌ Dados insuficientes para fechar gaveta');
       Toast.show({
         type: 'error',
         text1: 'Erro',
-        text2: 'Dados insuficientes para fechar a gaveta.'
+        text2: 'Informe o valor final para fechar a gaveta.'
       });
       return;
     }
     
-    // Confirmação antes de fechar
+    // Validar se o valor final é válido
+    const finalValueNum = parseMonetaryValue(finalValue);
+    console.log('Valor final convertido:', finalValueNum);
+    
+    if (isNaN(finalValueNum) || finalValueNum < 0) {
+      console.log('❌ Valor final inválido:', finalValueNum);
+      Toast.show({
+        type: 'error',
+        text1: 'Erro',
+        text2: 'Informe um valor final válido.'
+      });
+      return;
+    }
+    
     const currentBalance = cashBalance?.balance || 0;
-    const finalValueNum = currentBalance; // Usar saldo atual como valor final
     
     console.log('currentBalance:', currentBalance);
     console.log('finalValueNum:', finalValueNum);
@@ -829,6 +850,10 @@ export default function FinanceScreen() {
               await cashDrawerService.closeCashDrawer(user.company_id, currentDrawer.id, closeData);
               
               console.log('✅ Gaveta fechada com sucesso');
+              
+              // Fechar modal e limpar estados
+              setIsCloseDrawerModalOpen(false);
+              setFinalValue('');
               
               Toast.show({
                 type: 'success',
@@ -1707,10 +1732,81 @@ export default function FinanceScreen() {
         )}
       </BottomSheetModal>
 
+      {/* BottomSheet para fechar gaveta */}
+      <BottomSheetModal 
+        ref={closeDrawerBottomSheet.bottomSheetRef} 
+        snapPoints={["50%"]}
+        onClose={() => setIsCloseDrawerModalOpen(false)}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={{ gap: 16, padding: 16 }}>
+            <Text style={{ fontSize: 20, fontWeight: '700', color: colors.gray[900], textAlign: 'center' }}>
+              Fechar Gaveta de Caixa
+            </Text>
+            
+            <Text style={{ fontSize: 14, color: colors.gray[600], textAlign: 'center', marginBottom: 8 }}>
+              Informe o valor final em caixa para fechar a gaveta
+            </Text>
+            
+            <TextInput
+              placeholder="Valor final (ex: 150,00)"
+              keyboardType="decimal-pad"
+              value={finalValue}
+              onChangeText={(text) => {
+                const formatted = formatMonetaryInput(text);
+                setFinalValue(formatted);
+              }}
+              returnKeyType="done"
+              onSubmitEditing={() => {
+                Keyboard.dismiss();
+              }}
+              style={{
+                backgroundColor: '#fff',
+                borderRadius: 12,
+                padding: 16,
+                borderWidth: 1,
+                borderColor: colors.gray[200],
+                fontSize: 16,
+              }}
+            />
+            
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <Button
+                mode="outlined"
+                style={{ flex: 1, borderRadius: 12 }}
+                textColor={colors.gray[600]}
+                onPress={() => {
+                  Keyboard.dismiss();
+                  setIsCloseDrawerModalOpen(false);
+                  closeDrawerBottomSheet.closeBottomSheet();
+                  setFinalValue('');
+                }}
+              >
+                Cancelar
+              </Button>
+              
+              <Button
+                mode="contained"
+                style={{ flex: 1, borderRadius: 12 }}
+                buttonColor={colors.error}
+                loading={isClosingDrawer}
+                disabled={isClosingDrawer || !finalValue}
+                onPress={() => {
+                  Keyboard.dismiss();
+                  confirmCloseDrawer();
+                }}
+              >
+                {isClosingDrawer ? 'Fechando...' : 'Fechar Gaveta'}
+              </Button>
+            </View>
+          </View>
+        </TouchableWithoutFeedback>
+      </BottomSheetModal>
+
       {/* BottomSheet para abrir gaveta */}
       <BottomSheetModal 
         ref={drawerBottomSheet.bottomSheetRef} 
-        snapPoints={["40%", "60%"]}
+        snapPoints={["60%"]}
         onClose={() => setIsOpenDrawerModalOpen(false)}
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -1730,6 +1826,10 @@ export default function FinanceScreen() {
               onChangeText={(text) => {
                 const formatted = formatMonetaryInput(text);
                 setInitialValue(formatted);
+              }}
+              returnKeyType="done"
+              onSubmitEditing={() => {
+                Keyboard.dismiss();
               }}
               style={{
                 backgroundColor: '#fff',
