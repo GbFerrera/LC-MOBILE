@@ -237,6 +237,66 @@ export interface PaymentResponse {
   payment_methods: PaymentMethodDetails[];
 }
 
+export interface CashDrawerTransaction {
+  id: number;
+  company_id: number;
+  type: 'income' | 'expense' | 'cash_out';
+  description: string;
+  category: string;
+  amount: string;
+  transaction_date: string;
+  created_at: string;
+  updated_at: string;
+  cash_drawer_id: number;
+}
+
+export interface CashDrawerPayment {
+  id: number;
+  company_id: number;
+  client_id: number;
+  command_id: number;
+  appointment_id: number | null;
+  total_amount: string;
+  status: string;
+  paid_at: string;
+  created_at: string;
+  updated_at: string;
+  cash_drawer_id: number;
+  client_name: string;
+  client_email: string;
+  client_phone: string;
+  payment_methods: PaymentMethodDetails[];
+  discount_info: {
+    has_discount: boolean;
+    original_price: number;
+    final_price: number;
+    discount_type: string | null;
+    discount_value: number;
+    discount_amount: number;
+    total_discount_value: number;
+  };
+}
+
+export interface CashDrawerDetails {
+  id: number;
+  opened_by_id: number;
+  closed_by_id: number | null;
+  date_open: string;
+  date_closed: string | null;
+  value_inicial: string;
+  value_final: string | null;
+  cash_difference: string | null;
+  status: 'open' | 'closed';
+  notes: string;
+  created_at: string;
+  updated_at: string;
+  opener_name: string;
+  company_id: number;
+  closer_name: string | null;
+  transactions: CashDrawerTransaction[];
+  payments: CashDrawerPayment[];
+}
+
 export const cashDrawerService = {
   // Buscar gavetas com filtros (igual ao web)
   async getCashDrawers(
@@ -412,17 +472,36 @@ export const cashDrawerService = {
     }
   },
 
-  // Fechar gaveta (igual ao web)
-  async closeCashDrawer(companyId: number, id: number, data: CloseCashDrawerData): Promise<CashDrawer> {
+  // Fechar gaveta de caixa
+  closeCashDrawer: async (companyId: number, drawerId: number, data: CloseCashDrawerData): Promise<CashDrawer> => {
     try {
-      const response = await baseURL.put(`/cash-drawers/${id}/close`, data, {
+      const response = await baseURL.put(`/cash-drawers/${drawerId}/close`, data, {
         headers: {
-          'company_id': companyId.toString()
+          'company_id': companyId.toString(),
+          'Content-Type': 'application/json'
         }
       });
+      
       return response.data;
     } catch (error) {
-      console.error('Erro ao fechar gaveta de caixa:', error);
+      console.error('Erro ao fechar gaveta:', error);
+      throw error;
+    }
+  },
+
+  // Buscar detalhes completos da gaveta
+  getCashDrawerDetails: async (companyId: number, drawerId: number): Promise<CashDrawerDetails> => {
+    try {
+      const response = await baseURL.get(`/cash-drawers/${drawerId}`, {
+        headers: {
+          'company_id': companyId.toString(),
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao buscar detalhes da gaveta:', error);
       throw error;
     }
   },

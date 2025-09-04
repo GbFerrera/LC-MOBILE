@@ -24,14 +24,13 @@ import UnifiedHeader from '../components/UnifiedHeader';
 import { pdfService } from '../services/pdfService';
 import Toast from 'react-native-toast-message';
 import { 
-  transactions, 
-  cashDrawerService, 
   financialTransactionsService,
   commandService,
+  cashDrawerService,
   getCurrentCashBalance,
   getCashBalanceByPeriod,
   fetchTransactions,
-  CashDrawer, 
+  CashDrawer,
   CashBalanceResponse,
   CashBalancePeriodResponse,
   FinancialTransaction,
@@ -40,7 +39,10 @@ import {
   CommandDetails,
   CreatePaymentData,
   PaymentMethodDetails,
-  PaymentResponse
+  PaymentResponse,
+  CashDrawerDetails,
+  CreateCashDrawerData,
+  CloseCashDrawerData,
 } from '../services/financial';
 const { width } = Dimensions.get('window');
 
@@ -85,6 +87,7 @@ export default function FinanceScreen() {
   const transactionBottomSheet = useBottomSheet();
   const drawerBottomSheet = useBottomSheet();
   const closeDrawerBottomSheet = useBottomSheet();
+  const drawerDetailsBottomSheet = useBottomSheet();
   const commandDetailsBottomSheet = useBottomSheet();
   const paymentBottomSheet = useBottomSheet();
   const { user } = useAuth();
@@ -101,6 +104,9 @@ export default function FinanceScreen() {
   const [openingDrawer, setOpeningDrawer] = useState(false);
   const [finalValue, setFinalValue] = useState('');
   const [isCloseDrawerModalOpen, setIsCloseDrawerModalOpen] = useState(false);
+  const [drawerDetails, setDrawerDetails] = useState<CashDrawerDetails | null>(null);
+  const [isDrawerDetailsModalOpen, setIsDrawerDetailsModalOpen] = useState(false);
+  const [loadingDrawerDetails, setLoadingDrawerDetails] = useState(false);
 
   // Estados para transações financeiras
   const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
@@ -186,12 +192,12 @@ export default function FinanceScreen() {
     }
   }, [commandFilter, user?.company_id]);
   
-  // Atualizar transações quando o período mudar
+  // Atualizar transações quando o período mudar ou gaveta atual mudar
   useEffect(() => {
-    if (user?.company_id) {
+    if (user?.company_id && currentDrawer) {
       fetchRecentTransactions();
     }
-  }, [selectedPeriod, startDate, endDate, user?.company_id]);
+  }, [currentDrawer, user?.company_id]);
   
   // Função para calcular datas baseadas no período selecionado
   const getDateRange = () => {
@@ -316,27 +322,119 @@ export default function FinanceScreen() {
     }
   };
 
-  // Função para buscar saldo atual do caixa (igual ao web)
-  const fetchCurrentBalance = async () => {
-    if (!user?.company_id) return;
+  // Função para buscar transações recentes da gaveta atual
+  const fetchRecentTransactions = async () => {
+    if (!currentDrawer || !user?.company_id) return;
     
     try {
-      setIsLoadingBalance(true);
-      const response = await financialTransactionsService.getCurrentCashBalance(user.company_id);
-      setCashBalance(response);
+      setIsLoadingTransactions(true);
+      const details = await cashDrawerService.getCashDrawerDetails(user.company_id, currentDrawer.id!);
       
-      // Atualizar também a lista de gavetas abertas quando buscar saldo atual
-      fetchOpenCashDrawers();
+      console.log('=== DETALHES DA GAVETA PARA TRANSAÇÕES ===');
+      console.log('details:', details);
+      console.log('transactions:', details.transactions);
+      console.log('payments:', details.payments);
+      
+      // Pegar as 5 transações mais recentes
+      const allTransactions = [...(details.transactions || []), ...(details.payments || [])];
+      console.log('allTransactions antes da ordenação:', allTransactions);
+      
+      const sortedTransactions = allTransactions.sort((a, b) => 
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+      
+      // Formatar transações para a UI
+      const formattedTransactions = sortedTransactions.map(tx => {
+        console.log('Formatando transação:', tx);
+        
+        // Verificar se é transação ou pagamento
+        const isTransaction = 'type' in tx;
+        const isPayment = 'total_amount' in tx;
+        
+        let type: string;
+        let description: string;
+        let amount: number;
+        let category: string;
+        
+        if (isTransaction) {
+          // É uma CashDrawerTransaction
+          const transaction = tx as any;
+          type = transaction.type;
+          description = transaction.description || 'Transação';
+          amount = Math.abs(parseFloat(transaction.amount) || 0);
+          category = transaction.category || 'Geral';
+        } else if (isPayment) {
+          // É um CashDrawerPayment
+          const payment = tx as any;
+          type = 'income'; // Pagamentos são sempre receita
+          description = `Pagamento - ${payment.client_name || 'Cliente'}`;
+          amount = Math.abs(parseFloat(payment.total_amount) || 0);
+          category = payment.payment_methods?.[0]?.method || 'Pagamento';
+        } else {
+          // Fallback
+          type = 'expense';
+          description = 'Transação';
+          amount = 0;
+          category = 'Geral';
+        }
+        
+        return {
+          id: tx.id,
+          type,
+          description,
+          amount,
+          time: new Date(tx.created_at).toLocaleTimeString('pt-BR', { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+          }),
+          category
+        };
+      });
+      
+      console.log('formattedTransactions:', formattedTransactions);
+      setRecentTransactions(formattedTransactions.slice(0, 5));
     } catch (error) {
-      console.error('Erro ao buscar saldo atual:', error);
+      console.error('Erro ao buscar transações recentes:', error);
+      setRecentTransactions([]);
+    } finally {
+      setIsLoadingTransactions(false);
+    }
+  };
+
+  // Função para buscar detalhes da gaveta
+  const fetchDrawerDetails = async (drawerId: number) => {
+    console.log('=== BUSCAR DETALHES DA GAVETA - INÍCIO ===');
+    console.log('drawerId:', drawerId);
+    console.log('user?.company_id:', user?.company_id);
+    
+    try {
+      if (!user?.company_id) {
+        console.log('❌ Company ID não encontrado');
+        return;
+      }
+      
+      setLoadingDrawerDetails(true);
+      console.log('🔄 Buscando detalhes da gaveta...');
+      
+      const details = await cashDrawerService.getCashDrawerDetails(user.company_id, drawerId);
+      console.log('✅ Detalhes recebidos:', details);
+      
+      setDrawerDetails(details);
+      setIsDrawerDetailsModalOpen(true);
+      
+      console.log('🔄 Abrindo BottomSheet...');
+      drawerDetailsBottomSheet.openBottomSheet();
+      
+    } catch (error) {
+      console.error('❌ Erro ao buscar detalhes da gaveta:', error);
       Toast.show({
         type: 'error',
         text1: 'Erro',
-        text2: 'Não foi possível carregar o saldo atual'
+        text2: 'Não foi possível carregar os detalhes da gaveta'
       });
-      setCashBalance(null);
     } finally {
-      setIsLoadingBalance(false);
+      setLoadingDrawerDetails(false);
+      console.log('=== BUSCAR DETALHES DA GAVETA - FIM ===');
     }
   };
 
@@ -617,7 +715,7 @@ export default function FinanceScreen() {
      }
    };
 
-  const fetchRecentTransactions = async () => {
+  const fetchRecentTransactionsOld = async () => {
     try {
       if (!user?.company_id) return;
       
@@ -758,7 +856,6 @@ export default function FinanceScreen() {
       console.log('🔄 Atualizando dados após abertura...');
       await Promise.all([
         fetchCashDrawers(),
-        fetchCurrentBalance(),
         checkIfDrawerOpenedToday()
       ]);
       
@@ -847,7 +944,7 @@ export default function FinanceScreen() {
               console.log('Company ID:', user.company_id);
               console.log('Drawer ID:', currentDrawer.id);
               
-              await cashDrawerService.closeCashDrawer(user.company_id, currentDrawer.id, closeData);
+              await cashDrawerService.closeCashDrawer(user.company_id, currentDrawer.id!, closeData);
               
               console.log('✅ Gaveta fechada com sucesso');
               
@@ -868,7 +965,6 @@ export default function FinanceScreen() {
               console.log('🔄 Atualizando dados após fechamento...');
               await Promise.all([
                 fetchCashDrawers(),
-                fetchCurrentBalance(),
                 checkIfDrawerOpenedToday(),
                 fetchOpenCashDrawers()
               ]);
@@ -1144,16 +1240,17 @@ export default function FinanceScreen() {
   };
 
   const openDrawerDetails = () => {
+    console.log('=== OPEN DRAWER DETAILS - INÍCIO ===');
+    console.log('currentDrawer:', currentDrawer);
+    
     if (!currentDrawer) {
+      console.log('❌ Nenhuma gaveta aberta');
       Alert.alert('Gaveta Fechada', 'É necessário abrir uma gaveta para ver seus detalhes.');
       return;
     }
-    // Implementar lógica para abrir o BottomSheet de detalhes da gaveta
-    // Este BottomSheet deve mostrar todas as transações da gaveta, saldo, etc.
-    // Para isso, precisamos fazer uma nova chamada à API para obter todas as transações da gaveta
-    // e o saldo atual.
-    // Por enquanto, vamos apenas abrir o modal de detalhes da gaveta.
-    // A lógica real deve ser implementada aqui.
+    
+    console.log('🔄 Chamando fetchDrawerDetails com ID:', currentDrawer.id);
+    fetchDrawerDetails(currentDrawer.id!);
   };
 
   return (
@@ -1380,15 +1477,6 @@ export default function FinanceScreen() {
               </View>
             </View>
 
-            {/* Botão para ver detalhes completos */}
-            <TouchableOpacity 
-              style={styles.viewDetailsButton}
-              onPress={() => openDrawerDetails()}
-            >
-              <Ionicons name="eye-outline" size={20} color={colors.primary} />
-              <Text style={styles.viewDetailsText}>Ver Detalhes Completos</Text>
-              <Ionicons name="chevron-forward" size={20} color={colors.primary} />
-            </TouchableOpacity>
           </View>
         )}
 
@@ -1449,14 +1537,28 @@ export default function FinanceScreen() {
         {/* Action Buttons */}
         <View style={styles.section}>
           {currentDrawer ? (
-            <Button
-              mode="contained"
-              style={styles.actionButton}
-              buttonColor={colors.error}
-              onPress={handleCloseDrawer}
-            >
-              Fechar Gaveta
-            </Button>
+            <View style={{ gap: 12 }}>
+              <TouchableOpacity 
+                style={styles.viewDetailsButton}
+                onPress={() => fetchDrawerDetails(currentDrawer.id!)}
+                disabled={loadingDrawerDetails}
+              >
+                <Ionicons name="eye-outline" size={20} color={colors.primary} />
+                <Text style={styles.viewDetailsText}>
+                  {loadingDrawerDetails ? 'Carregando...' : 'Ver Detalhes Completos'}
+                </Text>
+                <Ionicons name="chevron-forward" size={20} color={colors.primary} />
+              </TouchableOpacity>
+              
+              <Button
+                mode="contained"
+                style={styles.actionButton}
+                buttonColor={colors.error}
+                onPress={handleCloseDrawer}
+              >
+                Fechar Gaveta
+              </Button>
+            </View>
           ) : (
             <Button
               mode="contained"
@@ -1801,6 +1903,176 @@ export default function FinanceScreen() {
             </View>
           </View>
         </TouchableWithoutFeedback>
+      </BottomSheetModal>
+
+      {/* BottomSheet para detalhes da gaveta */}
+      <BottomSheetModal 
+        ref={drawerDetailsBottomSheet.bottomSheetRef} 
+        snapPoints={["90%"]}
+        onClose={() => {
+          setIsDrawerDetailsModalOpen(false);
+          setDrawerDetails(null);
+        }}
+      >
+        {drawerDetails && (
+          <ScrollView style={{ padding: 16 }}>
+            <View style={{ gap: 20 }}>
+              {/* Header */}
+              <View style={{ alignItems: 'center', marginBottom: 16 }}>
+                <Text style={{ fontSize: 20, fontWeight: '700', color: colors.gray[900] }}>
+                  Gaveta de {new Date(drawerDetails.date_open).toLocaleDateString('pt-BR')} às {new Date(drawerDetails.date_open).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                </Text>
+                <Text style={{ fontSize: 14, color: colors.gray[600], marginTop: 4 }}>
+                  Visualização completa de todas as transações e pagamentos da gaveta.
+                </Text>
+              </View>
+
+              {/* Informações Gerais e Valores */}
+              <View style={{ flexDirection: 'row', gap: 16 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 16, fontWeight: '600', color: colors.gray[900], marginBottom: 8 }}>
+                    Informações Gerais
+                  </Text>
+                  <View style={{ gap: 4 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Text style={{ fontSize: 14, fontWeight: '500', color: colors.gray[700] }}>Status:</Text>
+                      <View style={{ 
+                        backgroundColor: drawerDetails.status === 'open' ? colors.success : colors.gray[500],
+                        paddingHorizontal: 8,
+                        paddingVertical: 2,
+                        borderRadius: 12,
+                        marginLeft: 8
+                      }}>
+                        <Text style={{ fontSize: 12, color: 'white', fontWeight: '500' }}>
+                          {drawerDetails.status === 'open' ? 'Aberta' : 'Fechada'}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={{ fontSize: 14, color: colors.gray[600] }}>
+                      <Text style={{ fontWeight: '500' }}>Aberta por:</Text> {drawerDetails.opener_name}
+                    </Text>
+                    <Text style={{ fontSize: 14, color: colors.gray[600] }}>
+                      <Text style={{ fontWeight: '500' }}>Data de abertura:</Text> {new Date(drawerDetails.date_open).toLocaleDateString('pt-BR')} às {new Date(drawerDetails.date_open).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 16, fontWeight: '600', color: colors.gray[900], marginBottom: 8 }}>
+                    Valores
+                  </Text>
+                  <Text style={{ fontSize: 14, color: colors.gray[600] }}>
+                    <Text style={{ fontWeight: '500' }}>Valor inicial:</Text> R$ {parseFloat(drawerDetails.value_inicial).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Transações */}
+              <View>
+                <Text style={{ fontSize: 16, fontWeight: '600', color: colors.gray[900], marginBottom: 12 }}>
+                  📄 Transações ({drawerDetails.transactions.length})
+                </Text>
+                {drawerDetails.transactions.length > 0 ? (
+                  <View style={{ gap: 8 }}>
+                    {drawerDetails.transactions.map((transaction) => (
+                      <View 
+                        key={transaction.id}
+                        style={{
+                          backgroundColor: '#fff',
+                          borderRadius: 12,
+                          padding: 16,
+                          borderWidth: 1,
+                          borderColor: colors.gray[200],
+                          flexDirection: 'row',
+                          alignItems: 'center'
+                        }}
+                      >
+                        <View style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: 4,
+                          backgroundColor: transaction.type === 'income' ? colors.success : colors.error,
+                          marginRight: 12
+                        }} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: 16, fontWeight: '500', color: colors.gray[900] }}>
+                            {transaction.description}
+                          </Text>
+                          <Text style={{ fontSize: 12, color: colors.gray[600] }}>
+                            {transaction.category} • {new Date(transaction.transaction_date).toLocaleDateString('pt-BR')} às {new Date(transaction.transaction_date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                          </Text>
+                        </View>
+                        <Text style={{ 
+                          fontSize: 16, 
+                          fontWeight: '600',
+                          color: transaction.type === 'income' ? colors.success : colors.error 
+                        }}>
+                          {transaction.type === 'income' ? '+' : '-'}R$ {parseFloat(transaction.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                ) : (
+                  <Text style={{ fontSize: 14, color: colors.gray[500], textAlign: 'center', padding: 20 }}>
+                    Nenhuma transação registrada
+                  </Text>
+                )}
+              </View>
+
+              {/* Pagamentos */}
+              <View>
+                <Text style={{ fontSize: 16, fontWeight: '600', color: colors.gray[900], marginBottom: 12 }}>
+                  💳 Pagamentos ({drawerDetails.payments.length})
+                </Text>
+                {drawerDetails.payments.length > 0 ? (
+                  <View style={{ gap: 8 }}>
+                    {drawerDetails.payments.map((payment) => (
+                      <View 
+                        key={payment.id}
+                        style={{
+                          backgroundColor: '#fff',
+                          borderRadius: 12,
+                          padding: 16,
+                          borderWidth: 1,
+                          borderColor: colors.gray[200],
+                          flexDirection: 'row',
+                          alignItems: 'center'
+                        }}
+                      >
+                        <View style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: 4,
+                          backgroundColor: colors.success,
+                          marginRight: 12
+                        }} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: 16, fontWeight: '500', color: colors.gray[900] }}>
+                            Pagamento - {payment.client_name}
+                          </Text>
+                          <Text style={{ fontSize: 12, color: colors.gray[600] }}>
+                            {payment.payment_methods.map(method => method.method.toUpperCase()).join(', ')} • {new Date(payment.paid_at).toLocaleDateString('pt-BR')}
+                          </Text>
+                        </View>
+                        <Text style={{ 
+                          fontSize: 16, 
+                          fontWeight: '600',
+                          color: colors.success 
+                        }}>
+                          +R$ {parseFloat(payment.total_amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                ) : (
+                  <Text style={{ fontSize: 14, color: colors.gray[500], textAlign: 'center', padding: 20 }}>
+                    Nenhum pagamento registrado
+                  </Text>
+                )}
+              </View>
+            </View>
+          </ScrollView>
+        )}
       </BottomSheetModal>
 
       {/* BottomSheet para abrir gaveta */}
