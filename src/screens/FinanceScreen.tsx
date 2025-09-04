@@ -2,15 +2,17 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   ScrollView,
-  SafeAreaView,
   TouchableOpacity,
-  Dimensions,
   Alert,
+  StyleSheet,
   TextInput,
   Keyboard,
   TouchableWithoutFeedback,
+  FlatList,
+  Modal,
+  Dimensions,
+  SafeAreaView,
 } from 'react-native';
 import { Surface, Button } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -857,7 +859,7 @@ export default function FinanceScreen() {
       
       // Se não houver gavetas abertas, prosseguir com a abertura
       const drawerData = {
-        opened_by_id: parseInt(user.id.toString()),
+        opened_by_id: parseInt((user.id || 0).toString()),
         value_inicial: numericValue.toString(),
         notes: drawerNotes || ''
       };
@@ -1901,27 +1903,53 @@ export default function FinanceScreen() {
         </TouchableWithoutFeedback>
       </BottomSheetModal>
 
-      {/* BottomSheet para detalhes da gaveta */}
-      <BottomSheetModal 
-        ref={drawerDetailsBottomSheet.bottomSheetRef} 
-        snapPoints={["90%"]}
-        onClose={() => {
+      {/* Modal para detalhes da gaveta */}
+      <Modal
+        visible={isDrawerDetailsModalOpen}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => {
           setIsDrawerDetailsModalOpen(false);
           setDrawerDetails(null);
         }}
       >
-        {drawerDetails && (
-          <ScrollView style={{ padding: 16 }}>
-            <View style={{ gap: 20 }}>
-              {/* Header */}
-              <View style={{ alignItems: 'center', marginBottom: 16 }}>
-                <Text style={{ fontSize: 20, fontWeight: '700', color: colors.gray[900] }}>
-                  Gaveta de {new Date(drawerDetails.date_open).toLocaleDateString('pt-BR')} às {new Date(drawerDetails.date_open).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                </Text>
-                <Text style={{ fontSize: 14, color: colors.gray[600], marginTop: 4 }}>
-                  Visualização completa de todas as transações e pagamentos da gaveta.
-                </Text>
-              </View>
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.white }}>
+          <View style={{ flex: 1 }}>
+            {/* Header do Modal */}
+            <View style={{ 
+              flexDirection: 'row', 
+              alignItems: 'center', 
+              justifyContent: 'space-between',
+              padding: 16,
+              borderBottomWidth: 1,
+              borderBottomColor: colors.gray[200]
+            }}>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: colors.gray[900] }}>
+                Detalhes da Gaveta
+              </Text>
+              <TouchableOpacity 
+                onPress={() => {
+                  setIsDrawerDetailsModalOpen(false);
+                  setDrawerDetails(null);
+                }}
+                style={{ padding: 8 }}
+              >
+                <Ionicons name="close" size={24} color={colors.gray[600]} />
+              </TouchableOpacity>
+            </View>
+
+            {drawerDetails && (
+              <ScrollView style={{ flex: 1, padding: 16 }}>
+                <View style={{ gap: 20 }}>
+                  {/* Header */}
+                  <View style={{ alignItems: 'center', marginBottom: 16 }}>
+                    <Text style={{ fontSize: 20, fontWeight: '700', color: colors.gray[900] }}>
+                      Gaveta de {new Date(drawerDetails.date_open).toLocaleDateString('pt-BR')} às {new Date(drawerDetails.date_open).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                    </Text>
+                    <Text style={{ fontSize: 14, color: colors.gray[600], marginTop: 4 }}>
+                      Visualização completa de todas as transações e pagamentos da gaveta.
+                    </Text>
+                  </View>
 
               {/* Informações Gerais e Valores */}
               <View style={{ flexDirection: 'row', gap: 16 }}>
@@ -2066,10 +2094,12 @@ export default function FinanceScreen() {
                   </Text>
                 )}
               </View>
-            </View>
-          </ScrollView>
-        )}
-      </BottomSheetModal>
+                </View>
+              </ScrollView>
+            )}
+          </View>
+        </SafeAreaView>
+      </Modal>
 
       {/* BottomSheet para abrir gaveta */}
       <BottomSheetModal 
