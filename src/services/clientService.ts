@@ -1,6 +1,5 @@
 import axios from 'axios';
-
-import { API_BASE_URL } from './api';
+import { baseURL } from './base_URL';
 
 export interface Client {
   id: number;
@@ -33,17 +32,10 @@ export const clientService = {
       console.log('🔍 Search term:', searchTerm);
       
       const params = searchTerm ? { term: searchTerm } : {};
-      const url = `${API_BASE_URL}/clients`;
       
-      console.log('🔍 URL da requisição:', url);
-      console.log('🔍 API_BASE_URL:', API_BASE_URL);
       console.log('🔍 Parâmetros:', params);
       
-      // Teste com URL hardcoded para debug
-      const testUrl = 'http://localhost:3131/clients';
-      console.log('🔍 Testando com URL hardcoded:', testUrl);
-      
-      const response = await axios.get(testUrl, {
+      const response = await baseURL.get('/clients', {
         headers: {
           'company_id': companyId.toString(),
           'Content-Type': 'application/json',
@@ -79,7 +71,7 @@ export const clientService = {
 
   async getClient(companyId: number, clientId: number): Promise<Client> {
     try {
-      const response = await axios.get(`${API_BASE_URL}/clients/${clientId}`, {
+      const response = await baseURL.get(`/clients/${clientId}`, {
         headers: {
           'company_id': companyId.toString(),
           'Content-Type': 'application/json',
@@ -95,7 +87,7 @@ export const clientService = {
 
   async createClient(companyId: number, clientData: Partial<Client>): Promise<Client> {
     try {
-      const response = await axios.post(`${API_BASE_URL}/clients`, clientData, {
+      const response = await baseURL.post('/clients', clientData, {
         headers: {
           'company_id': companyId.toString(),
           'Content-Type': 'application/json',
@@ -111,7 +103,7 @@ export const clientService = {
 
   async updateClient(companyId: number, clientId: number, clientData: Partial<Client>): Promise<void> {
     try {
-      await axios.put(`${API_BASE_URL}/clients/${clientId}`, clientData, {
+      await baseURL.put(`/clients/${clientId}`, clientData, {
         headers: {
           'company_id': companyId.toString(),
           'Content-Type': 'application/json',
@@ -125,7 +117,7 @@ export const clientService = {
 
   async deleteClient(companyId: number, clientId: number): Promise<void> {
     try {
-      await axios.delete(`${API_BASE_URL}/clients/${clientId}`, {
+      await baseURL.delete(`/clients/${clientId}`, {
         headers: {
           'company_id': companyId.toString(),
           'Content-Type': 'application/json',

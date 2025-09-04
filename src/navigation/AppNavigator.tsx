@@ -6,6 +6,7 @@ import {
   DashboardScreen, 
   AgendaScreen, 
   FinanceScreen, 
+  CommandsScreen,
   ProfileScreen,
   ClientsScreen,
   LoginScreen
@@ -44,6 +45,13 @@ const TabNavigator: React.FC = () => {
         component={FinanceScreen}
         options={{
           title: 'Financeiro'
+        }}
+      />
+      <Tab.Screen 
+        name="Commands" 
+        component={CommandsScreen}
+        options={{
+          title: 'Comandas'
         }}
       />
       <Tab.Screen 

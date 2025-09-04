@@ -188,7 +188,7 @@ export const dashboardService = {
 };
 
 export const cashDrawerService = {
-  getCurrent: () => api.get<CashDrawer>('/cash-drawers/current/open'),
+  getCurrent: () => api.get<CashDrawer>('/cash-drawers/current'),
   
   open: (data: { value_inicial: number; notes?: string }) =>
     api.post<CashDrawer>('/cash-drawers', data),
