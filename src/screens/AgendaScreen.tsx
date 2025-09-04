@@ -22,6 +22,7 @@ import { format, parseISO, isToday, startOfMonth, endOfMonth, eachDayOfInterval,
 import { useFocusEffect } from '@react-navigation/native';
 import AppointmentSlots from '../components/AppointmentSlots';
 import { useAuth } from '../contexts/AuthContext';
+import UnifiedHeader from '../components/UnifiedHeader';
 
 // Interfaces - usando os mesmos tipos do componente AppointmentSlots
 interface Client {
@@ -615,20 +616,12 @@ export default function AgendaScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Agenda</Text>
-        <TouchableOpacity 
-          style={styles.headerAction}
-          onPress={() => setShowCalendar(true)}
-        >
-          <Ionicons name="calendar-outline" size={24} color={colors.primary} />
-        </TouchableOpacity>
-      </View>
-
-      {/* Week Calendar */}
-      <View style={styles.weekCalendar}>
+      <UnifiedHeader
+        title="Agenda"
+        rightIcon="calendar-outline"
+        onRightIconPress={() => setShowCalendar(true)}
+      >
+        {/* Week Calendar */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {weekDays.map((day, index) => {
             const isToday = day.toDateString() === new Date().toDateString();
@@ -660,7 +653,9 @@ export default function AgendaScreen({ navigation }: any) {
             );
           })}
         </ScrollView>
-      </View>
+      </UnifiedHeader>
+
+      <SafeAreaView style={styles.safeArea}>
 
       {/* Today's Appointments Summary */}
       <View style={styles.todaySection}>
@@ -1047,6 +1042,8 @@ export default function AgendaScreen({ navigation }: any) {
                       onChangeText={(text) => setFreeIntervalData(prev => ({ ...prev, notes: text }))}
                       multiline
                       numberOfLines={3}
+                      returnKeyType="done"
+                      blurOnSubmit={true}
                     />
                   </View>
                 </>

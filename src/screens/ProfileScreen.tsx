@@ -13,6 +13,7 @@ import { Surface, Button, Divider } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
+import UnifiedHeader from '../components/UnifiedHeader';
 
 export default function ProfileScreen() {
   const { theme, isDarkMode, toggleTheme } = useTheme();
@@ -130,14 +131,12 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.container}>
+      <UnifiedHeader
+        title="Perfil"
+        rightIcon="create-outline"
+      />
+
       <SafeAreaView style={styles.safeArea}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Perfil</Text>
-        <TouchableOpacity style={styles.headerAction}>
-          <Ionicons name="create-outline" size={24} color={theme.primary} />
-        </TouchableOpacity>
-      </View>
 
       <ScrollView 
         showsVerticalScrollIndicator={false}

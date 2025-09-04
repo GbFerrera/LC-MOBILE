@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography } from '../theme/theme';
 import { useAuth } from '../contexts/AuthContext';
 import Toast from 'react-native-toast-message';
+import UnifiedHeader from '../components/UnifiedHeader';
 import {
   commandService,
   CommandDetails,
@@ -413,13 +414,13 @@ export default function CommandsScreen() {
 
   return (
     <View style={styles.container}>
+      <UnifiedHeader
+        title="Comandas"
+        rightIcon="refresh-outline"
+        onRightIconPress={fetchCommands}
+      />
+
       <SafeAreaView style={styles.safeArea}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Comandas</Text>
-          <TouchableOpacity onPress={fetchCommands} style={styles.refreshButton}>
-            <Ionicons name="refresh-outline" size={24} color={colors.primary} />
-          </TouchableOpacity>
-        </View>
 
         <ScrollView
           style={styles.content}

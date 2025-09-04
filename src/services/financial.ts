@@ -86,7 +86,7 @@ export interface PaymentMethod {
 
 export interface CreateCashDrawerData {
   opened_by_id: number;
-  value_inicial: number;
+  value_inicial: string;
   notes?: string;
 }
 
@@ -238,7 +238,35 @@ export interface PaymentResponse {
 }
 
 export const cashDrawerService = {
-  // Buscar gavetas de caixa
+  // Buscar gavetas com filtros (igual ao web)
+  async getCashDrawers(
+    companyId: number, 
+    startDate?: string, 
+    endDate?: string, 
+    status?: string
+  ): Promise<CashDrawer[]> {
+    try {
+      const params = new URLSearchParams();
+      if (startDate) params.append('start_date', startDate);
+      if (endDate) params.append('end_date', endDate);
+      if (status) params.append('status', status);
+      
+      const queryString = params.toString();
+      const url = queryString ? `/cash-drawers?${queryString}` : '/cash-drawers';
+      
+      const response = await baseURL.get(url, {
+        headers: {
+          'company_id': companyId.toString()
+        }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao buscar gavetas de caixa:', error);
+      throw error;
+    }
+  },
+
+  // Buscar gavetas de caixa (método legacy)
   async fetch(companyId: number): Promise<CashDrawer[]> {
     try {
       const response = await baseURL.get(`/cash-drawer/${companyId}`);
@@ -249,7 +277,24 @@ export const cashDrawerService = {
     }
   },
 
-  // Buscar gaveta atual aberta
+  // Buscar gaveta atual aberta (igual ao web)
+  async getCurrentDrawer(companyId: number): Promise<CashDrawer | null> {
+    try {
+      const response = await baseURL.get('/cash-drawers/current/open', {
+        headers: {
+          'company_id': companyId.toString()
+        }
+      });
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.status === 404 || error.response?.status === 400) {
+        return null; // Nenhuma gaveta aberta ou endpoint não encontrado
+      }
+      throw error;
+    }
+  },
+
+  // Buscar gaveta atual aberta (método legacy)
   async getCurrent(companyId: number): Promise<CashDrawer | null> {
     try {
       const response = await baseURL.get(`/cash-drawers/current/open`, {
@@ -298,7 +343,22 @@ export const cashDrawerService = {
     }
   },
 
-  // Buscar detalhes de uma gaveta específica
+  // Buscar gaveta específica (igual ao web)
+  async getCashDrawer(companyId: number, id: number): Promise<CashDrawer> {
+    try {
+      const response = await baseURL.get(`/cash-drawers/${id}`, {
+        headers: {
+          'company_id': companyId.toString()
+        }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao buscar gaveta específica:', error);
+      throw error;
+    }
+  },
+
+  // Buscar detalhes de uma gaveta específica (método legacy)
   async getById(drawerId: number): Promise<CashDrawer | null> {
     try {
       const response = await baseURL.get(`/cash-drawers/${drawerId}`, {
@@ -316,7 +376,32 @@ export const cashDrawerService = {
     }
   },
 
-  // Criar nova gaveta de caixa
+  // Criar gaveta (igual ao web)
+  async createCashDrawer(companyId: number, data: CreateCashDrawerData): Promise<CashDrawer> {
+    try {
+      console.log('Enviando requisição para criar gaveta:');
+      console.log('URL:', '/cash-drawers');
+      console.log('Company ID:', companyId);
+      console.log('Headers:', { 'company_id': companyId.toString() });
+      console.log('Data:', data);
+      
+      const response = await baseURL.post('/cash-drawers', data, {
+        headers: {
+          'company_id': companyId.toString(),
+          'Content-Type': 'application/json'
+        }
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error('Erro ao criar gaveta de caixa:', error);
+      console.error('Response data:', error.response?.data);
+      console.error('Response status:', error.response?.status);
+      console.error('Response headers:', error.response?.headers);
+      throw error;
+    }
+  },
+
+  // Criar nova gaveta de caixa (método legacy)
   async create(data: CreateCashDrawerData): Promise<CashDrawer> {
     try {
       const response = await baseURL.post('/cash-drawer', data);
@@ -327,7 +412,22 @@ export const cashDrawerService = {
     }
   },
 
-  // Fechar gaveta de caixa
+  // Fechar gaveta (igual ao web)
+  async closeCashDrawer(companyId: number, id: number, data: CloseCashDrawerData): Promise<CashDrawer> {
+    try {
+      const response = await baseURL.put(`/cash-drawers/${id}/close`, data, {
+        headers: {
+          'company_id': companyId.toString()
+        }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao fechar gaveta de caixa:', error);
+      throw error;
+    }
+  },
+
+  // Fechar gaveta de caixa (método legacy)
   async close(drawerId: number, data: CloseCashDrawerData): Promise<CashDrawer> {
     try {
       const response = await baseURL.put(`/cash-drawer/${drawerId}/close`, data);

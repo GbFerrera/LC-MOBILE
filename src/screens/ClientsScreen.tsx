@@ -19,6 +19,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { clientService, Client } from '../services/clientService';
 import ClientDetailsBottomSheet from '../components/ClientDetailsBottomSheet';
 import { useBottomSheet } from '../hooks/useBottomSheet';
+import UnifiedHeader from '../components/UnifiedHeader';
 
 
 export default function ClientsScreen() {
@@ -279,28 +280,24 @@ export default function ClientsScreen() {
 
   return (
     <View style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Clientes</Text>
-          <TouchableOpacity style={styles.headerAction}>
-            <Ionicons name="search-outline" size={24} color={theme.primary} />
-          </TouchableOpacity>
-        </View>
-
+      <UnifiedHeader
+        title="Clientes"
+        rightIcon="search-outline"
+      >
         {/* Search Bar */}
-        <View style={styles.searchSection}>
-          <View style={styles.searchBar}>
-            <Ionicons name="search-outline" size={20} color={theme.gray[500]} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Buscar clientes..."
-              placeholderTextColor={theme.gray[500]}
-              value={searchText}
-              onChangeText={setSearchText}
-            />
-          </View>
+        <View style={styles.searchBar}>
+          <Ionicons name="search-outline" size={20} color={theme.gray[500]} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Buscar clientes..."
+            placeholderTextColor={theme.gray[500]}
+            value={searchText}
+            onChangeText={setSearchText}
+          />
         </View>
+      </UnifiedHeader>
+
+      <SafeAreaView style={styles.safeArea}>
 
         {/* Filters */}
         <View style={styles.filtersSection}>

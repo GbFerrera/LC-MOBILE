@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography } from '../theme/theme';
 import { useAuth } from '../contexts/AuthContext';
 import { api, Appointment, Professional, scheduleService } from '../services/api';
+import UnifiedHeader from '../components/UnifiedHeader';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay } from 'date-fns';
 const { width } = Dimensions.get('window');
 
@@ -81,6 +82,7 @@ export default function DashboardScreen({ navigation }: any) {
   const [isCreatingDayOff, setIsCreatingDayOff] = useState(false);
   const [dayOffDates, setDayOffDates] = useState<string[]>([]);
   const [isRemovingDayOff, setIsRemovingDayOff] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
 
   // Função para buscar dias de folga do profissional
   const fetchDayOffDates = async () => {
@@ -384,45 +386,43 @@ export default function DashboardScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
+      <UnifiedHeader
+        title="Dashboard"
+        rightIcon="calendar-outline"
+        onRightIconPress={() => setShowDayOffModal(true)}
+      >
+        {/* Profile Info */}
+        <View style={styles.profileSection}>
+          <View style={styles.profileInfo}>
+            <View style={styles.avatar}>
+              <Ionicons name="person" size={24} color={colors.white} />
+            </View>
+            <View style={styles.greetingContainer}>
+              <Text style={styles.greeting}>Olá, {user?.name}</Text>
+              <Text style={styles.date}>
+                {new Date().toLocaleDateString('pt-BR', {
+                  weekday: 'long',
+                  day: 'numeric',
+                  month: 'long',
+                })}
+              </Text>
+              {!isLoading && schedule && (
+                <Text style={styles.scheduleInfo}>
+                  {schedule.is_day_off 
+                    ? '🏖️ Dia de folga' 
+                    : `⏰ ${schedule.start_time} - ${schedule.end_time}`}
+                </Text>
+              )}
+            </View>
+          </View>
+        </View>
+      </UnifiedHeader>
+
       <SafeAreaView style={styles.safeArea}>
         <ScrollView 
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerContent}>
-            <View style={styles.profileInfo}>
-              <View style={styles.avatar}>
-                <Ionicons name="person" size={24} color={colors.white} />
-              </View>
-              <View style={styles.greetingContainer}>
-                <Text style={styles.greeting}>Olá, {user?.name}</Text>
-                <Text style={styles.date}>
-                  {new Date().toLocaleDateString('pt-BR', {
-                    weekday: 'long',
-                    day: 'numeric',
-                    month: 'long',
-                  })}
-                </Text>
-                {!isLoading && schedule && (
-                  <Text style={styles.scheduleInfo}>
-                    {schedule.is_day_off 
-                      ? '🏖️ Dia de folga' 
-                      : `⏰ ${schedule.start_time} - ${schedule.end_time}`}
-                  </Text>
-                )}
-              </View>
-            </View>
-            <View style={styles.headerActions}>
-              <View style={styles.notificationButton}>
-                <Ionicons name="notifications-outline" size={24} color={colors.gray[700]} />
-                {appointments.length > 0 && <View style={styles.notificationBadge} />}
-              </View>
-            </View>
-          </View>
-        </View>
-
         {/* Stats Cards */}
         <View style={styles.statsContainer}>
           <LinearGradient
@@ -1177,5 +1177,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white + 'CC',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  // Estilo para o header unificado
+  profileSection: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
   },
 });

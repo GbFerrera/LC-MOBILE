@@ -26,7 +26,6 @@ const tabItems: TabItem[] = [
   { name: 'Dashboard', icon: 'home-outline', label: 'Home' },
   { name: 'Agenda', icon: 'calendar-outline', label: 'Agenda' },
   { name: 'Finance', icon: 'wallet-outline', label: 'Financeiro' },
-  { name: 'Commands', icon: 'receipt-outline', label: 'Comandas' },
   { name: 'Clients', icon: 'people-outline', label: 'Clientes' },
   { name: 'Profile', icon: 'person-outline', label: 'Perfil' },
 ];

@@ -7,15 +7,20 @@ import {
   SafeAreaView,
   TouchableOpacity,
   Dimensions,
+  Alert,
+  TextInput,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { Surface, Button } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography } from '../theme/theme';
 import { useBottomSheet } from '../hooks/useBottomSheet';
-import { Alert, TextInput } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
+import { useNavigation } from '@react-navigation/native';
 import BottomSheetModal from '../components/BottomSheetModal';
+import UnifiedHeader from '../components/UnifiedHeader';
 import { pdfService } from '../services/pdfService';
 import Toast from 'react-native-toast-message';
 import { 
@@ -82,13 +87,14 @@ export default function FinanceScreen() {
   const commandDetailsBottomSheet = useBottomSheet();
   const paymentBottomSheet = useBottomSheet();
   const { user } = useAuth();
+  const navigation = useNavigation();
 
   // Estados para gaveta de caixa
   const [currentDrawer, setCurrentDrawer] = useState<CashDrawer | null>(null);
   const [cashBalance, setCashBalance] = useState<CashBalanceResponse | null>(null);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
-  const [showOpenDrawerModal, setShowOpenDrawerModal] = useState(false);
+  const [isOpenDrawerModalOpen, setIsOpenDrawerModalOpen] = useState(false);
   const [initialValue, setInitialValue] = useState('');
   const [drawerNotes, setDrawerNotes] = useState('');
   const [openingDrawer, setOpeningDrawer] = useState(false);
@@ -140,14 +146,28 @@ export default function FinanceScreen() {
   const [cashDrawers, setCashDrawers] = useState<CashDrawer[]>([]);
   const [isLoadingDrawers, setIsLoadingDrawers] = useState(false);
 
+  // Estados para funcionalidades do web
+  const [openCashDrawers, setOpenCashDrawers] = useState<CashDrawer[]>([]);
+  const [isLoadingOpenDrawers, setIsLoadingOpenDrawers] = useState(false);
+  const [isLoadingBalance, setIsLoadingBalance] = useState(false);
+  const [isLoadingPeriodBalance, setIsLoadingPeriodBalance] = useState(false);
+  const [periodBalance, setPeriodBalance] = useState<CashBalancePeriodResponse | null>(null);
+  const [filteredTransactions, setFilteredTransactions] = useState<any[]>([]);
+  const [hasDrawerOpenedToday, setHasDrawerOpenedToday] = useState(false);
+  const [todayClosedDrawer, setTodayClosedDrawer] = useState<CashDrawer | null>(null);
+  const [isClosingDrawer, setIsClosingDrawer] = useState(false);
+
   // Verificar gaveta atual ao carregar a tela
   useEffect(() => {
-    checkCurrentDrawer();
     if (user?.company_id) {
+      checkCurrentDrawer();
       fetchCommands();
-      fetchCashDrawers(); // Buscar gavetas com filtro de data
+      fetchCashDrawers();
+      fetchOpenCashDrawers();
+      checkIfDrawerOpenedToday();
+      fetchCashBalanceByPeriod();
     }
-  }, []);
+  }, [user?.company_id]);
 
   // Atualizar gavetas quando o período mudar
   useEffect(() => {
@@ -208,53 +228,72 @@ export default function FinanceScreen() {
 
   // Verificar se deve mostrar o BottomSheet para abrir gaveta
   useEffect(() => {
-    if (!loading && (!currentDrawer || !currentDrawer.id)) {
-      // Se não há gaveta aberta, mostrar o BottomSheet para abrir
-      setShowOpenDrawerModal(true);
-      drawerBottomSheet.openBottomSheet();
-    } else if (!loading && currentDrawer && currentDrawer.id) {
-      // Se há uma gaveta válida, garantir que o modal está fechado
-      setShowOpenDrawerModal(false);
+    if (!loading) {
+      if (!currentDrawer) {
+        // Se não há gaveta aberta, mostrar o BottomSheet para abrir
+        setIsOpenDrawerModalOpen(true);
+        drawerBottomSheet.openBottomSheet();
+      } else {
+        // Se há uma gaveta válida, garantir que o modal está fechado
+        setIsOpenDrawerModalOpen(false);
+        drawerBottomSheet.closeBottomSheet();
+      }
     }
   }, [loading, currentDrawer]);
 
-  // Função para buscar gavetas de caixa com filtro de data (similar ao web)
+  // Função para buscar gavetas de caixa (igual ao web)
   const fetchCashDrawers = async () => {
+    if (!user?.company_id) return;
+    
     try {
-      if (!user?.company_id) return;
-      
       setIsLoadingDrawers(true);
-      
-      // Buscar gaveta aberta atual primeiro (últimos 5 dias por padrão)
-      const now = new Date();
-      const defaultStart = new Date(now);
-      defaultStart.setDate(now.getDate() - 5);
       
       let allDrawers: CashDrawer[] = [];
       
-      // Buscar gavetas abertas dos últimos 5 dias
-      const openDrawers = await cashDrawerService.getByDateRange(
-        user.company_id,
-        defaultStart.toISOString().split('T')[0],
-        now.toISOString().split('T')[0]
-      );
+      // 1. SEMPRE buscar gavetas abertas dos últimos 5 dias por padrão
+      const today = new Date();
+      const fiveDaysAgo = new Date(today);
+      fiveDaysAgo.setDate(today.getDate() - 5);
       
-      allDrawers = [...openDrawers];
+      const fiveDaysAgoStr = fiveDaysAgo.toISOString().split('T')[0];
+      const todayStr = today.toISOString().split('T')[0];
       
-      // Se há filtro de período aplicado, buscar gavetas fechadas também
+      try {
+        // Buscar gavetas abertas dos últimos 5 dias
+        const openDrawers = await cashDrawerService.getCashDrawers(
+          user.company_id, 
+          fiveDaysAgoStr, 
+          todayStr, 
+          'open'
+        );
+        allDrawers = [...openDrawers];
+      } catch (error) {
+        console.warn('Erro ao buscar gavetas abertas:', error);
+      }
+      
+      // 2. Se há filtro de data, buscar TAMBÉM gavetas fechadas do período
       if (selectedPeriod !== 'week' || startDate || endDate) {
         const { start, end } = getDateRange();
+        const startDateStr = start.toISOString().split('T')[0];
+        const endDateStr = end.toISOString().split('T')[0];
         
-        const periodDrawers = await cashDrawerService.getByDateRange(
-          user.company_id,
-          start.toISOString().split('T')[0],
-          end.toISOString().split('T')[0]
-        );
-        
-        // Combinar e remover duplicatas
-        const drawerIds = new Set(allDrawers.map(d => d.id));
-        const newDrawers = periodDrawers.filter(d => !drawerIds.has(d.id));
-        allDrawers = [...allDrawers, ...newDrawers];
+        try {
+          const filteredDrawers = await cashDrawerService.getCashDrawers(
+            user.company_id, 
+            startDateStr, 
+            endDateStr
+          );
+          
+          // Adicionar gavetas fechadas que não estão já na lista
+          const closedDrawers = filteredDrawers.filter(drawer => 
+            drawer.status === 'closed' && 
+            !allDrawers.some(existing => existing.id === drawer.id)
+          );
+          
+          allDrawers = [...allDrawers, ...closedDrawers];
+        } catch (error) {
+          console.warn('Erro ao buscar gavetas do período:', error);
+        }
       }
       
       // Ordenar por data de abertura (mais recente primeiro)
@@ -271,6 +310,128 @@ export default function FinanceScreen() {
       });
     } finally {
       setIsLoadingDrawers(false);
+    }
+  };
+
+  // Função para buscar saldo atual do caixa (igual ao web)
+  const fetchCurrentBalance = async () => {
+    if (!user?.company_id) return;
+    
+    try {
+      setIsLoadingBalance(true);
+      const response = await financialTransactionsService.getCurrentCashBalance(user.company_id);
+      setCashBalance(response);
+      
+      // Atualizar também a lista de gavetas abertas quando buscar saldo atual
+      fetchOpenCashDrawers();
+    } catch (error) {
+      console.error('Erro ao buscar saldo atual:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Erro',
+        text2: 'Não foi possível carregar o saldo atual'
+      });
+      setCashBalance(null);
+    } finally {
+      setIsLoadingBalance(false);
+    }
+  };
+
+  // Buscar gavetas abertas (igual ao web)
+  const fetchOpenCashDrawers = async () => {
+    if (!user?.company_id) return;
+    
+    try {
+      setIsLoadingOpenDrawers(true);
+      
+      // Calcular data 5 dias atrás
+      const today = new Date();
+      const fiveDaysAgo = new Date();
+      fiveDaysAgo.setDate(today.getDate() - 5);
+      
+      const startDate = fiveDaysAgo.toISOString().split('T')[0];
+      const endDate = today.toISOString().split('T')[0];
+      
+      // Buscar gavetas abertas no período
+      const openDrawers = await cashDrawerService.getCashDrawers(
+        user.company_id,
+        startDate,
+        endDate,
+        'open'
+      );
+      
+      setOpenCashDrawers(openDrawers);
+    } catch (error) {
+      console.error('Erro ao buscar gavetas abertas:', error);
+      setOpenCashDrawers([]);
+    } finally {
+      setIsLoadingOpenDrawers(false);
+    }
+  };
+
+  // Função para verificar se já foi aberta uma gaveta hoje (igual ao web)
+  const checkIfDrawerOpenedToday = async () => {
+    if (!user?.company_id) return false;
+    
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const drawers = await cashDrawerService.getCashDrawers(user.company_id, today, today);
+      const hasOpenedToday = drawers.length > 0;
+      setHasDrawerOpenedToday(hasOpenedToday);
+      
+      // Se há gaveta de hoje, verificar se está fechada para renderizar automaticamente
+      if (hasOpenedToday) {
+        const closedDrawer = drawers.find(drawer => drawer.status === 'closed');
+        if (closedDrawer) {
+          // Buscar dados completos da gaveta fechada
+          const fullDrawerData = await cashDrawerService.getCashDrawer(user.company_id, closedDrawer.id);
+          setTodayClosedDrawer(fullDrawerData);
+        } else {
+          setTodayClosedDrawer(null);
+        }
+      } else {
+        setTodayClosedDrawer(null);
+      }
+      
+      return hasOpenedToday;
+    } catch (error) {
+      console.error('Erro ao verificar gavetas do dia:', error);
+      return false;
+    }
+  };
+
+  // Função para buscar saldo por período (igual ao web)
+  const fetchCashBalanceByPeriod = async () => {
+    if (!user?.company_id || !selectedPeriod) return;
+    
+    try {
+      setIsLoadingPeriodBalance(true);
+      
+      const { start, end } = getDateRange();
+      const startDate = start.toISOString().split('T')[0];
+      const endDate = end.toISOString().split('T')[0];
+      
+      const response = await financialTransactionsService.getCashBalanceByPeriod(
+        user.company_id,
+        startDate,
+        endDate
+      );
+      
+      setPeriodBalance(response);
+      
+      // Atualizar também a lista de gavetas abertas quando buscar saldo por período
+      fetchOpenCashDrawers();
+      
+    } catch (error) {
+      console.error('Erro ao buscar saldo por período:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Erro',
+        text2: 'Não foi possível carregar o saldo do período'
+      });
+      setPeriodBalance(null);
+    } finally {
+      setIsLoadingPeriodBalance(false);
     }
   };
 
@@ -365,15 +526,23 @@ export default function FinanceScreen() {
   };
 
   const checkCurrentDrawer = async () => {
+    if (!user?.company_id) return;
+    
     try {
-      if (!user?.company_id) return;
-      
       setLoading(true);
-      const drawer = await cashDrawerService.getCurrent(user.company_id);
+      
+      // Verificar se há gaveta aberta usando o método do web
+      const drawer = await cashDrawerService.getCurrentDrawer(user.company_id);
       setCurrentDrawer(drawer);
       
-      // Buscar saldo atual usando o novo serviço
-      const balance = await getCurrentCashBalance(user.company_id);
+      // Se não há gaveta aberta, abrir modal automaticamente
+      if (!drawer) {
+        setIsOpenDrawerModalOpen(true);
+        drawerBottomSheet.openBottomSheet();
+      }
+      
+      // Buscar saldo atual
+      const balance = await financialTransactionsService.getCurrentCashBalance(user.company_id);
       setCashBalance(balance);
       
       // Calcular métricas
@@ -382,11 +551,11 @@ export default function FinanceScreen() {
       // Buscar transações recentes
       await fetchRecentTransactions();
       
-      // Atualizar lista de gavetas
-      await fetchCashDrawers();
     } catch (error) {
       console.error('Erro ao verificar gaveta:', error);
-      Alert.alert('Erro', 'Não foi possível verificar o status da gaveta.');
+      // Se der erro (provavelmente não há gaveta aberta), abrir modal
+      setIsOpenDrawerModalOpen(true);
+      drawerBottomSheet.openBottomSheet();
     } finally {
       setLoading(false);
     }
@@ -504,86 +673,198 @@ export default function FinanceScreen() {
   };
 
   const handleOpenDrawer = async () => {
+    console.log('=== ABRIR GAVETA - INÍCIO ===');
+    console.log('user?.company_id:', user?.company_id);
+    console.log('initialValue:', initialValue);
+    console.log('drawerNotes:', drawerNotes);
+    
+    if (!user?.company_id || !initialValue) {
+      console.log('❌ Dados insuficientes para abrir gaveta');
+      Alert.alert('Erro', 'Empresa não identificada ou valor inicial não informado.');
+      return;
+    }
+    
+    // Validar se o valor é válido
+    const numericValue = parseMonetaryValue(initialValue);
+    console.log('Valor numérico convertido:', numericValue);
+    
+    if (isNaN(numericValue) || numericValue <= 0) {
+      console.log('❌ Valor inicial inválido:', numericValue);
+      Alert.alert('Erro', 'Informe um valor inicial válido.');
+      return;
+    }
+    
     try {
-      if (!user?.company_id) {
-        Alert.alert('Erro', 'Empresa não identificada.');
-        return;
-      }
-
-      const numericValue = Number(initialValue.replace(',', '.'));
-      if (!numericValue || isNaN(numericValue) || numericValue < 0) {
-        Alert.alert('Erro', 'Informe um valor inicial válido.');
-        return;
-      }
-
       setOpeningDrawer(true);
-      const newDrawer = await cashDrawerService.create({
-        opened_by_id: Number(user.id) || 0,
-        value_inicial: numericValue,
-        notes: drawerNotes?.trim() || '',
+      
+      // Verificar se existem gavetas abertas antes de abrir uma nova (igual ao web)
+      const today = new Date();
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(today.getDate() - 30);
+      
+      const startDate = thirtyDaysAgo.toISOString().split('T')[0];
+      const endDate = today.toISOString().split('T')[0];
+      
+      // Buscar gavetas abertas no período
+      const openDrawers = await cashDrawerService.getCashDrawers(
+        user.company_id,
+        startDate,
+        endDate,
+        'open'
+      );
+      
+      // Se existirem gavetas abertas, não permitir abrir uma nova
+      if (openDrawers.length > 0) {
+        Alert.alert(
+          'Atenção',
+          `Existe${openDrawers.length > 1 ? 'm' : ''} ${openDrawers.length} gaveta${openDrawers.length > 1 ? 's' : ''} aberta${openDrawers.length > 1 ? 's' : ''}. Feche-a${openDrawers.length > 1 ? 's' : ''} antes de abrir uma nova.`
+        );
+        
+        // Atualizar a lista de gavetas abertas
+        setOpenCashDrawers(openDrawers);
+        return;
+      }
+      
+      // Se não houver gavetas abertas, prosseguir com a abertura
+      const drawerData = {
+        opened_by_id: parseInt(user.id.toString()),
+        value_inicial: numericValue.toString(),
+        notes: drawerNotes || ''
+      };
+      
+      console.log('Dados para criar gaveta:', drawerData);
+      console.log('Company ID:', user.company_id);
+      
+      const newDrawer = await cashDrawerService.createCashDrawer(user.company_id, drawerData);
+      
+      console.log('✅ Gaveta criada com sucesso:', newDrawer);
+      
+      Toast.show({
+        type: 'success',
+        text1: 'Sucesso',
+        text2: 'Gaveta de caixa aberta com sucesso!'
       });
-
+      
       setCurrentDrawer(newDrawer);
-      setShowOpenDrawerModal(false);
+      setIsOpenDrawerModalOpen(false);
       drawerBottomSheet.closeBottomSheet();
       setInitialValue('');
       setDrawerNotes('');
-      Alert.alert('Sucesso', 'Gaveta aberta com sucesso!');
       
-      // Atualizar saldo e lista de gavetas
-      await checkCurrentDrawer();
+      // Atualizar dados após abrir gaveta
+      console.log('🔄 Atualizando dados após abertura...');
+      await Promise.all([
+        fetchCashDrawers(),
+        fetchCurrentBalance(),
+        checkIfDrawerOpenedToday()
+      ]);
+      
+      console.log('✅ Dados atualizados com sucesso');
+      
     } catch (error) {
       console.error('Erro ao abrir gaveta:', error);
-      Alert.alert('Erro', 'Não foi possível abrir a gaveta.');
+      Toast.show({
+        type: 'error',
+        text1: 'Erro',
+        text2: 'Não foi possível abrir a gaveta de caixa.'
+      });
     } finally {
       setOpeningDrawer(false);
     }
   };
 
   const handleCloseDrawer = async () => {
-    try {
-      if (!user?.company_id || !currentDrawer) return;
-
-      Alert.prompt(
-        'Fechar Gaveta',
-        'Informe o valor final em caixa:',
-        [
-          { text: 'Cancelar', style: 'cancel' },
-          {
-            text: 'Fechar',
-            onPress: async (finalValue) => {
-              try {
-                const numericValue = Number(finalValue?.replace(',', '.'));
-                if (!numericValue || isNaN(numericValue) || numericValue < 0) {
-                  Alert.alert('Erro', 'Informe um valor final válido.');
-                  return;
-                }
-
-                await cashDrawerService.close(currentDrawer.id, {
-                  closed_by_id: Number(user.id) || 0,
-                  value_final: numericValue,
-                  notes: '',
-                });
-
-                setCurrentDrawer(null);
-                setCashBalance(null);
-                Alert.alert('Sucesso', 'Gaveta fechada com sucesso!');
-                
-                // Atualizar lista de gavetas
-                await fetchCashDrawers();
-              } catch (error) {
-                console.error('Erro ao fechar gaveta:', error);
-                Alert.alert('Erro', 'Não foi possível fechar a gaveta.');
-              }
+    console.log('=== FECHAR GAVETA - INÍCIO ===');
+    console.log('user?.company_id:', user?.company_id);
+    console.log('currentDrawer:', currentDrawer);
+    console.log('user?.id:', user?.id);
+    console.log('cashBalance:', cashBalance);
+    
+    if (!user?.company_id || !currentDrawer || !user?.id) {
+      console.log('❌ Dados insuficientes para fechar gaveta');
+      Toast.show({
+        type: 'error',
+        text1: 'Erro',
+        text2: 'Dados insuficientes para fechar a gaveta.'
+      });
+      return;
+    }
+    
+    // Confirmação antes de fechar
+    const currentBalance = cashBalance?.balance || 0;
+    const finalValueNum = currentBalance; // Usar saldo atual como valor final
+    
+    console.log('currentBalance:', currentBalance);
+    console.log('finalValueNum:', finalValueNum);
+    
+    Alert.alert(
+      'Fechar Gaveta',
+      `Confirma o fechamento da gaveta?\n\nSaldo atual: ${formatCurrency(currentBalance)}\nValor final: ${formatCurrency(finalValueNum)}`,
+      [
+        {
+          text: 'Cancelar',
+          style: 'cancel',
+          onPress: () => {
+            console.log('❌ Fechamento cancelado pelo usuário');
+          }
+        },
+        {
+          text: 'Fechar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              console.log('🔄 Iniciando fechamento da gaveta...');
+              setIsClosingDrawer(true);
+              
+              const closeData = {
+                closed_by_id: parseInt(user.id.toString()),
+                value_final: finalValueNum,
+                notes: 'Gaveta fechada via mobile'
+              };
+              
+              console.log('Dados para fechar gaveta:', closeData);
+              console.log('Company ID:', user.company_id);
+              console.log('Drawer ID:', currentDrawer.id);
+              
+              await cashDrawerService.closeCashDrawer(user.company_id, currentDrawer.id, closeData);
+              
+              console.log('✅ Gaveta fechada com sucesso');
+              
+              Toast.show({
+                type: 'success',
+                text1: 'Sucesso',
+                text2: 'Gaveta de caixa fechada com sucesso!'
+              });
+              
+              setCurrentDrawer(null);
+              setCashBalance(null);
+              
+              // Atualizar dados após fechar gaveta
+              console.log('🔄 Atualizando dados após fechamento...');
+              await Promise.all([
+                fetchCashDrawers(),
+                fetchCurrentBalance(),
+                checkIfDrawerOpenedToday(),
+                fetchOpenCashDrawers()
+              ]);
+              
+              console.log('✅ Dados atualizados com sucesso');
+              
+            } catch (error) {
+              console.error('❌ Erro ao fechar gaveta:', error);
+              Toast.show({
+                type: 'error',
+                text1: 'Erro',
+                text2: 'Não foi possível fechar a gaveta de caixa.'
+              });
+            } finally {
+              setIsClosingDrawer(false);
+              console.log('=== FECHAR GAVETA - FIM ===');
             }
           }
-        ],
-        'plain-text'
-      );
-    } catch (error) {
-      console.error('Erro ao fechar gaveta:', error);
-      Alert.alert('Erro', 'Não foi possível fechar a gaveta.');
-    }
+        }
+      ]
+    );
   };
 
   const handleOpenAction = (type: 'income' | 'expense' | 'cash_out') => {
@@ -678,14 +959,31 @@ export default function FinanceScreen() {
 
   // Função para formatar valor monetário em tempo real
   const formatMonetaryInput = (value: string) => {
+    // Remove tudo que não é dígito
     const numericValue = value.replace(/\D/g, '');
+    
+    // Se não há valor, retorna vazio
     if (!numericValue) return '';
+    
+    // Converte para número (centavos)
     const cents = parseInt(numericValue);
+    
+    // Converte para reais
     const reais = cents / 100;
+    
+    // Formata no padrão brasileiro
     return reais.toLocaleString('pt-BR', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     });
+  };
+
+  // Função para converter valor formatado de volta para número
+  const parseMonetaryValue = (formattedValue: string) => {
+    if (!formattedValue) return 0;
+    // Remove pontos e substitui vírgula por ponto
+    const numericString = formattedValue.replace(/\./g, '').replace(',', '.');
+    return parseFloat(numericString) || 0;
   };
 
   // Função para exportar relatório de transações
@@ -831,40 +1129,43 @@ export default function FinanceScreen() {
     // e o saldo atual.
     // Por enquanto, vamos apenas abrir o modal de detalhes da gaveta.
     // A lógica real deve ser implementada aqui.
-         Alert.alert('Detalhes da Gaveta', `Valor Inicial: ${formatCurrency(Number(currentDrawer.value_inicial))}\nSaldo Atual: ${formatCurrency(cashBalance?.balance || 0)}\nTransações: ${recentTransactions.length}`);
   };
 
   return (
     <View style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Financeiro</Text>
-        <View style={styles.headerActions}>
+      <UnifiedHeader
+        title="Financeiro"
+        rightIcon="document-text-outline"
+        onRightIconPress={handleExportTransactionsReport}
+      >
+        {/* Header Actions */}
+        <View style={styles.headerActionsContainer}>
           <TouchableOpacity 
-            style={styles.headerAction}
-            onPress={handleExportTransactionsReport}
-            disabled={isGeneratingPDF}
+            style={styles.headerActionButton}
+            onPress={() => (navigation as any).navigate('Commands')}
           >
             <Ionicons 
-              name="document-text-outline" 
-              size={24} 
-              color={isGeneratingPDF ? colors.gray[400] : colors.primary} 
+              name="receipt-outline" 
+              size={20} 
+              color={colors.primary} 
             />
+            <Text style={styles.headerActionText}>Comandas</Text>
           </TouchableOpacity>
           <TouchableOpacity 
-            style={styles.headerAction}
-            onPress={handleExportPeriodReport}
-            disabled={isGeneratingPDF}
+            style={styles.headerActionButton}
+            onPress={openDrawerDetails}
           >
             <Ionicons 
-              name="bar-chart-outline" 
-              size={24} 
-              color={isGeneratingPDF ? colors.gray[400] : colors.primary} 
+              name="information-circle-outline" 
+              size={20} 
+              color={colors.primary} 
             />
+            <Text style={styles.headerActionText}>Detalhes</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </UnifiedHeader>
+
+      <SafeAreaView style={styles.safeArea}>
 
       <ScrollView 
         showsVerticalScrollIndicator={false}
@@ -1066,99 +1367,6 @@ export default function FinanceScreen() {
           </View>
         )}
 
-        {/* Commands Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Comandas</Text>
-            <View style={styles.commandFilters}>
-              {['all', 'open', 'closed'].map((filter) => (
-                <TouchableOpacity
-                  key={filter}
-                  style={[
-                    styles.filterButton,
-                    commandFilter === filter && styles.filterButtonActive,
-                  ]}
-                  onPress={() => setCommandFilter(filter as 'all' | 'open' | 'closed')}
-                >
-                  <Text style={[
-                    styles.filterButtonText,
-                    commandFilter === filter && styles.filterButtonTextActive,
-                  ]}>
-                    {filter === 'all' ? 'Todas' : filter === 'open' ? 'Abertas' : 'Fechadas'}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-          
-          {commandsLoading ? (
-            <View style={{ alignItems: 'center', paddingVertical: spacing.lg }}>
-              <Text style={{ color: colors.gray[500] }}>Carregando comandas...</Text>
-            </View>
-          ) : commands.length === 0 ? (
-            <View style={{ alignItems: 'center', paddingVertical: spacing.lg }}>
-              <Text style={{ color: colors.gray[500] }}>Nenhuma comanda encontrada</Text>
-            </View>
-          ) : (
-            commands.slice(0, 5).map((command) => (
-              <Surface key={command.id} style={styles.commandCard} elevation={1}>
-                <TouchableOpacity 
-                  style={styles.commandCardContent}
-                  onPress={() => {
-                    setSelectedCommand(command);
-                    setShowCommandDetails(true);
-                    commandDetailsBottomSheet.openBottomSheet();
-                  }}
-                >
-                  <View style={styles.commandIcon}>
-                    <Ionicons 
-                      name={command.status === 'open' ? 'receipt-outline' : 'checkmark-circle'} 
-                      size={24} 
-                      color={command.status === 'open' ? colors.warning : colors.success} 
-                    />
-                  </View>
-                  <View style={styles.commandInfo}>
-                    <Text style={styles.commandClient}>
-                      {command.client_name}
-                    </Text>
-                    <View style={styles.commandMeta}>
-                      <Text style={styles.commandTime}>
-                        {new Date(command.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                      </Text>
-                      <Text style={[
-                        styles.commandStatus,
-                        { 
-                          backgroundColor: command.status === 'open' ? colors.warning + '20' : colors.success + '20',
-                          color: command.status === 'open' ? colors.warning : colors.success
-                        }
-                      ]}>
-                        {command.status === 'open' ? 'Aberta' : 'Fechada'}
-                      </Text>
-                    </View>
-                  </View>
-                  <View style={styles.commandAmount}>
-                    <Text style={styles.commandValue}>
-                      {formatCurrency(command.total)}
-                    </Text>
-                    {command.status === 'open' && (
-                      <TouchableOpacity
-                        style={styles.payButton}
-                        onPress={(e) => {
-                          e.stopPropagation();
-                          setSelectedCommand(command);
-                          setPaymentAmount(command.total);
-                          paymentBottomSheet.openBottomSheet();
-                        }}
-                      >
-                        <Text style={styles.payButtonText}>Pagar</Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                </TouchableOpacity>
-              </Surface>
-            ))
-          )}
-        </View>
 
         {/* Recent Transactions */}
         <View style={styles.section}>
@@ -1229,7 +1437,10 @@ export default function FinanceScreen() {
               mode="contained"
               style={styles.actionButton}
               buttonColor={colors.success}
-              onPress={() => setShowOpenDrawerModal(true)}
+              onPress={() => {
+                setIsOpenDrawerModalOpen(true);
+                drawerBottomSheet.openBottomSheet();
+              }}
             >
               Abrir Gaveta
             </Button>
@@ -1432,7 +1643,7 @@ export default function FinanceScreen() {
                 }}
                 style={{
                   backgroundColor: '#fff',
-                  borderRadius: 12,
+                  borderRadius: 8,
                   padding: 12,
                   borderWidth: 1,
                   borderColor: colors.gray[200],
@@ -1500,34 +1711,35 @@ export default function FinanceScreen() {
       <BottomSheetModal 
         ref={drawerBottomSheet.bottomSheetRef} 
         snapPoints={["40%", "60%"]}
-        onClose={() => setShowOpenDrawerModal(false)}
+        onClose={() => setIsOpenDrawerModalOpen(false)}
       >
-        <View style={{ gap: 16 }}>
-          <Text style={{ fontSize: 20, fontWeight: '700', color: colors.gray[900], textAlign: 'center' }}>
-            Abrir Gaveta de Caixa
-          </Text>
-          
-          <Text style={{ fontSize: 14, color: colors.gray[600], textAlign: 'center', marginBottom: 8 }}>
-            Para começar a registrar transações, é necessário abrir uma gaveta de caixa
-          </Text>
-          
-          <TextInput
-            placeholder="Valor inicial (ex: 100,00)"
-            keyboardType="decimal-pad"
-            value={initialValue}
-            onChangeText={(text) => {
-              const formatted = formatMonetaryInput(text);
-              setInitialValue(formatted);
-            }}
-            style={{
-              backgroundColor: '#fff',
-              borderRadius: 12,
-              padding: 16,
-              borderWidth: 1,
-              borderColor: colors.gray[200],
-              fontSize: 16,
-            }}
-          />
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={{ gap: 16 }}>
+            <Text style={{ fontSize: 20, fontWeight: '700', color: colors.gray[900], textAlign: 'center' }}>
+              Abrir Gaveta de Caixa
+            </Text>
+            
+            <Text style={{ fontSize: 14, color: colors.gray[600], textAlign: 'center', marginBottom: 8 }}>
+              Para começar a registrar transações, é necessário abrir uma gaveta de caixa
+            </Text>
+            
+            <TextInput
+              placeholder="Valor inicial (ex: 100,00)"
+              keyboardType="decimal-pad"
+              value={initialValue}
+              onChangeText={(text) => {
+                const formatted = formatMonetaryInput(text);
+                setInitialValue(formatted);
+              }}
+              style={{
+                backgroundColor: '#fff',
+                borderRadius: 12,
+                padding: 16,
+                borderWidth: 1,
+                borderColor: colors.gray[200],
+                fontSize: 16,
+              }}
+            />
           
           <TextInput
             placeholder="Observações (opcional)"
@@ -1551,7 +1763,11 @@ export default function FinanceScreen() {
               mode="outlined"
               style={{ flex: 1, borderRadius: 12 }}
               textColor={colors.gray[600]}
-              onPress={() => setShowOpenDrawerModal(false)}
+              onPress={() => {
+                Keyboard.dismiss();
+                setIsOpenDrawerModalOpen(false);
+                drawerBottomSheet.closeBottomSheet();
+              }}
             >
               Cancelar
             </Button>
@@ -1562,12 +1778,16 @@ export default function FinanceScreen() {
               buttonColor={colors.success}
               loading={openingDrawer}
               disabled={openingDrawer}
-              onPress={handleOpenDrawer}
+              onPress={() => {
+                Keyboard.dismiss();
+                handleOpenDrawer();
+              }}
             >
               {openingDrawer ? 'Abrindo...' : 'Abrir Gaveta'}
             </Button>
           </View>
-        </View>
+          </View>
+        </TouchableWithoutFeedback>
       </BottomSheetModal>
       </SafeAreaView>
     </View>
@@ -1946,5 +2166,28 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.white,
     fontWeight: '600',
+  },
+  // Estilos para o header unificado
+  headerActionsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingHorizontal: spacing.md,
+  },
+  headerActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.gray[100],
+    borderRadius: 12,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    flex: 1,
+    marginHorizontal: spacing.xs,
+    justifyContent: 'center',
+  },
+  headerActionText: {
+    fontSize: 12,
+    color: colors.primary,
+    fontWeight: '600',
+    marginLeft: spacing.xs,
   },
 });
