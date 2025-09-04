@@ -151,7 +151,8 @@ export default function FinanceScreen() {
   const [drawerSummary, setDrawerSummary] = useState({
     totalIncome: 0,
     totalExpenses: 0,
-    currentBalance: 0
+    currentBalance: 0,
+    initialValue: 0
   });
 
   // Estados para filtros e período
@@ -340,7 +341,11 @@ export default function FinanceScreen() {
       const details = await cashDrawerService.getCashDrawerDetails(user.company_id, currentDrawer.id!);
       
       console.log('=== DETALHES DA GAVETA PARA TRANSAÇÕES ===');
+      console.log('currentDrawer:', currentDrawer);
       console.log('details:', details);
+      console.log('details.value_inicial:', details.value_inicial);
+      console.log('currentDrawer.initial_value:', (currentDrawer as any).initial_value);
+      console.log('currentDrawer.value_inicial:', (currentDrawer as any).value_inicial);
       console.log('transactions:', details.transactions);
       console.log('payments:', details.payments);
       
@@ -410,15 +415,22 @@ export default function FinanceScreen() {
         };
       });
       
-      // Calcular saldo atual
-      const initialValue = parseFloat((currentDrawer as any).initial_value || '0');
+      // Calcular saldo atual - usar o valor inicial dos detalhes da gaveta
+      const initialValue = parseFloat(details.value_inicial || (currentDrawer as any).initial_value || (currentDrawer as any).value_inicial || '0');
       const currentBalance = initialValue + totalIncome - totalExpenses;
+      
+      console.log('=== CÁLCULO DO SALDO ===');
+      console.log('initialValue:', initialValue);
+      console.log('totalIncome:', totalIncome);
+      console.log('totalExpenses:', totalExpenses);
+      console.log('currentBalance:', currentBalance);
       
       // Atualizar resumo da gaveta
       setDrawerSummary({
         totalIncome,
         totalExpenses,
-        currentBalance
+        currentBalance,
+        initialValue // Adicionar valor inicial ao estado
       });
       
       console.log('formattedTransactions:', formattedTransactions);
@@ -1249,7 +1261,7 @@ export default function FinanceScreen() {
     weekRevenue: 4250.00,
     monthRevenue: 18500.00,
     cashDrawer: {
-      openedBy: currentDrawer?.opened_by?.name || 'N/A',
+      openedBy: (currentDrawer as any)?.opener_name || 'N/A',
       openTime: currentDrawer ? new Date(currentDrawer.date_open).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : 'N/A',
       initialValue: currentDrawer ? Number(currentDrawer.value_inicial) : 0,
       currentValue: cashBalance?.balance || 0,
@@ -1372,7 +1384,7 @@ export default function FinanceScreen() {
                 </View>
               </View>
 
-              <Text style={styles.drawerInfo}>
+              <Text style={[styles.drawerInfo, { color: colors.white, fontSize: 14 }]}>
                 Aberta por {financialData.cashDrawer.openedBy} às {financialData.cashDrawer.openTime}
               </Text>
             </LinearGradient>
@@ -1412,7 +1424,7 @@ export default function FinanceScreen() {
                   <Ionicons name="play-circle" size={20} color={colors.primary} />
                 </View>
                 <Text style={styles.summaryValue}>
-                  {formatCurrency((currentDrawer as any).initial_value || 0)}
+                  {formatCurrency(drawerSummary.initialValue)}
                 </Text>
                 <Text style={styles.summaryLabel}>Valor Inicial</Text>
               </Surface>
@@ -1450,6 +1462,23 @@ export default function FinanceScreen() {
           </View>
         )}
 
+
+        {/* Ver Detalhes Completos Button */}
+        {currentDrawer && (
+          <View style={styles.section}>
+            <TouchableOpacity 
+              style={styles.viewDetailsButton}
+              onPress={() => fetchDrawerDetails(currentDrawer.id!)}
+              disabled={loadingDrawerDetails}
+            >
+              <Ionicons name="eye-outline" size={20} color={colors.primary} />
+              <Text style={styles.viewDetailsText}>
+                {loadingDrawerDetails ? 'Carregando...' : 'Ver Detalhes Completos'}
+              </Text>
+              <Ionicons name="chevron-forward" size={20} color={colors.primary} />
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Quick Actions */}
         {currentDrawer && (
@@ -1535,28 +1564,14 @@ export default function FinanceScreen() {
         {/* Action Buttons */}
         <View style={styles.section}>
           {currentDrawer ? (
-            <View style={{ gap: 12 }}>
-              <TouchableOpacity 
-                style={styles.viewDetailsButton}
-                onPress={() => fetchDrawerDetails(currentDrawer.id!)}
-                disabled={loadingDrawerDetails}
-              >
-                <Ionicons name="eye-outline" size={20} color={colors.primary} />
-                <Text style={styles.viewDetailsText}>
-                  {loadingDrawerDetails ? 'Carregando...' : 'Ver Detalhes Completos'}
-                </Text>
-                <Ionicons name="chevron-forward" size={20} color={colors.primary} />
-              </TouchableOpacity>
-              
-              <Button
-                mode="contained"
-                style={styles.actionButton}
-                buttonColor={colors.error}
-                onPress={handleCloseDrawer}
-              >
-                Fechar Gaveta
-              </Button>
-            </View>
+            <Button
+              mode="contained"
+              style={styles.actionButton}
+              buttonColor={colors.error}
+              onPress={handleCloseDrawer}
+            >
+              Fechar Gaveta
+            </Button>
           ) : (
             <Button
               mode="contained"
