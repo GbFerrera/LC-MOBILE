@@ -314,3 +314,28 @@ export const authService = {
     }
   }
 };
+
+// Interface para cadastro de usuário
+export interface CreateUserData {
+  name: string;
+  email: string;
+  password: string;
+  phone_number: string;
+  position: string;
+  can_schedule?: boolean;
+}
+
+// Serviço para gerenciamento de usuários da equipe
+export const teamService = {
+  create: (data: CreateUserData) =>
+    api.post<Professional>('/teams', data),
+
+  getAll: () =>
+    api.get<Professional[]>('/teams'),
+
+  update: (id: number, data: Partial<CreateUserData>) =>
+    api.put<Professional>(`/teams/${id}`, data),
+
+  delete: (id: number) =>
+    api.delete(`/teams/${id}`),
+};

@@ -17,6 +17,7 @@ import { Surface, FAB, Chip, Divider, Button } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography } from '../theme/theme';
 import { api } from '../services/api';
+import { UpdateAppointmentStatus, CancelAppointment } from '../services/appointmentService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { format, parseISO, isToday, startOfMonth, endOfMonth, eachDayOfInterval, getDay } from 'date-fns';
 import { useFocusEffect } from '@react-navigation/native';
@@ -577,6 +578,84 @@ export default function AgendaScreen({ navigation }: any) {
     }
   };
 
+  // Função para atualizar status de agendamento baseada na versão web
+  const handleUpdateAppointmentStatus = async (appointmentId: number, newStatus: 'pending' | 'confirmed' | 'completed' | 'cancelled', appointment: Appointment) => {
+    try {
+      // Mostrar confirmação para ações críticas
+      if (newStatus === 'cancelled' || newStatus === 'completed') {
+        const action = newStatus === 'cancelled' ? 'cancelar' : 'concluir';
+        const confirmMessage = `Tem certeza que deseja ${action} este agendamento?`;
+        
+        Alert.alert(
+          'Confirmar Ação',
+          confirmMessage,
+          [
+            { text: 'Cancelar', style: 'cancel' },
+            { 
+              text: 'Confirmar', 
+              onPress: async () => {
+                await performStatusUpdate(appointmentId, newStatus, appointment);
+              }
+            }
+          ]
+        );
+      } else {
+        await performStatusUpdate(appointmentId, newStatus, appointment);
+      }
+    } catch (error: any) {
+      console.error('Erro ao atualizar status do agendamento:', error);
+      Alert.alert('Erro', 'Não foi possível atualizar o status do agendamento.');
+    }
+  };
+
+  // Função auxiliar para executar a atualização de status
+  const performStatusUpdate = async (appointmentId: number, newStatus: 'pending' | 'confirmed' | 'completed' | 'cancelled', appointment: Appointment) => {
+    try {
+      console.log(`Iniciando atualização de status: ID=${appointmentId}, Status=${newStatus}`);
+      let response;
+      
+      if (newStatus === 'cancelled') {
+        // Usar CancelAppointment para cancelamentos
+        console.log('Usando CancelAppointment para cancelamento');
+        response = await CancelAppointment(appointmentId);
+      } else {
+        // Usar UpdateAppointmentStatus para outros status
+        console.log(`Usando UpdateAppointmentStatus para status: ${newStatus}`);
+        response = await UpdateAppointmentStatus(appointmentId, newStatus);
+      }
+      
+      console.log('Resposta da API:', response);
+      
+      if (response.error) {
+        throw new Error(response.error);
+      }
+      
+      console.log('Status do agendamento atualizado com sucesso');
+      
+      // Mostrar mensagem de sucesso
+      const successMessages = {
+        'confirmed': 'Agendamento confirmado com sucesso!',
+        'cancelled': 'Agendamento cancelado com sucesso!',
+        'completed': 'Agendamento concluído com sucesso!',
+        'pending': 'Agendamento marcado como pendente!'
+      };
+      
+      Alert.alert('Sucesso', successMessages[newStatus as keyof typeof successMessages] || 'Status atualizado com sucesso!');
+      
+      // Recarregar agendamentos
+      await Promise.all([
+        fetchAppointments(),
+        fetchTodayAppointments()
+      ]);
+      
+    } catch (error: any) {
+      console.error('Erro ao executar atualização de status:', error);
+      console.error('Detalhes do erro:', error.response?.data || error.message);
+      const errorMessage = error.response?.data?.message || error.message || 'Erro desconhecido ao atualizar status';
+      Alert.alert('Erro', `Não foi possível atualizar o status: ${errorMessage}`);
+    }
+  };
+
   // Generate calendar days for the calendar modal month
   const generateCalendarDays = () => {
     const start = startOfMonth(calendarDate);
@@ -769,47 +848,13 @@ export default function AgendaScreen({ navigation }: any) {
                   setSelectedAppointment(appointment);
                   setShowDetailsDialog(true);
                 }}
+                onUpdateStatus={handleUpdateAppointmentStatus}
               />
           </ScrollView>
         )}
       </View>
 
-      {/* Floating Action Button */}
-      <FAB
-        icon="plus"
-        style={styles.fab}
-        color={colors.white}
-        onPress={() => {
-          // Preparar dados para o novo agendamento
-          const formattedDate = selectedDate.getFullYear() + '-' + 
-            String(selectedDate.getMonth() + 1).padStart(2, '0') + '-' + 
-            String(selectedDate.getDate()).padStart(2, '0');
-          const currentTime = new Date();
-          const hours = currentTime.getHours().toString().padStart(2, '0');
-          const minutes = Math.ceil(currentTime.getMinutes() / 15) * 15;
-          const formattedMinutes = minutes.toString().padStart(2, '0');
-          const time = `${hours}:${formattedMinutes}`;
-          
-          setSelectedSlot({ time, isEncaixe: false });
-          
-          // Resetar o formulário
-          setNewAppointment({
-            client_id: '',
-            professional_id: professionalId?.toString() || '',
-            appointment_date: formattedDate,
-            start_time: time + ':00',
-            end_time: time + ':00', // Será ajustado com base nos serviços selecionados
-            status: 'confirmed',
-            notes: '',
-            services: []
-          });
-          
-          setSelectedServices([]);
-          
-          // Abrir o dialog
-          setShowCreateDialog(true);
-        }}
-      />
+  
 
       {/* Calendar Modal */}
       <Modal
@@ -2169,11 +2214,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
     marginBottom: spacing.md,
-  },
-  detailsSectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.primary,
   },
   clientInfoGrid: {
     flexDirection: 'row',

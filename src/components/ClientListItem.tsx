@@ -93,7 +93,7 @@ export default function ClientListItem({ client, onPress, onCall }: ClientListIt
       <View style={styles.actions}>
         {client.phone_number && onCall && (
           <IconButton
-            icon="call"
+            icon="phone"
             size={20}
             iconColor={theme.primary}
             onPress={() => onCall(client.phone_number!)}

@@ -9,9 +9,12 @@ import {
   FlatList,
   ActivityIndicator,
   Linking,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Surface, FAB, Chip } from 'react-native-paper';
+import { Surface, Chip, Button } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import { useTheme } from '../contexts/ThemeContext';
@@ -19,7 +22,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { clientService, Client } from '../services/clientService';
 import ClientDetailsBottomSheet from '../components/ClientDetailsBottomSheet';
 import { useBottomSheet } from '../hooks/useBottomSheet';
-import UnifiedHeader from '../components/UnifiedHeader';
+
 
 
 export default function ClientsScreen() {
@@ -33,6 +36,18 @@ export default function ClientsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  
+  // Modal states
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone_number: '',
+    document: '',
+    password: '',
+    birthday: '',
+  });
   
   // Bottom Sheet hook
   const { bottomSheetRef, openBottomSheet, closeBottomSheet } = useBottomSheet();
@@ -200,6 +215,72 @@ export default function ClientsScreen() {
     });
   };
 
+  // Funções do modal de criação
+  const openCreateModal = () => {
+    setShowCreateModal(true);
+  };
+
+  const closeCreateModal = () => {
+    setShowCreateModal(false);
+    setFormData({
+      name: '',
+      email: '',
+      phone_number: '',
+      document: '',
+      password: '',
+      birthday: '',
+    });
+  };
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleCreateClient = async () => {
+    if (!user?.company_id) {
+      Toast.show({
+        type: 'error',
+        text1: 'Erro',
+        text2: 'ID da empresa não encontrado',
+        position: 'top',
+      });
+      return;
+    }
+
+    if (!formData.name || !formData.email || !formData.phone_number) {
+      Toast.show({
+        type: 'error',
+        text1: 'Campos obrigatórios',
+        text2: 'Nome, email e telefone são obrigatórios',
+        position: 'top',
+      });
+      return;
+    }
+
+    setCreating(true);
+    try {
+      await clientService.createClient(user.company_id, formData);
+      Toast.show({
+        type: 'success',
+        text1: 'Cliente criado',
+        text2: 'Cliente cadastrado com sucesso',
+        position: 'top',
+      });
+      closeCreateModal();
+      loadClients(); // Recarregar a lista
+    } catch (error) {
+      console.error('Erro ao criar cliente:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Erro ao criar cliente',
+        text2: 'Não foi possível cadastrar o cliente',
+        position: 'top',
+      });
+    } finally {
+      setCreating(false);
+    }
+  };
+
   const formatPhoneNumber = (phone?: string) => {
     if (!phone) return 'Não informado';
     // Formatar telefone brasileiro
@@ -280,24 +361,33 @@ export default function ClientsScreen() {
 
   return (
     <View style={styles.container}>
-      <UnifiedHeader
-        title="Clientes"
-        rightIcon="search-outline"
-      >
-        {/* Search Bar */}
-        <View style={styles.searchBar}>
-          <Ionicons name="search-outline" size={20} color={theme.gray[500]} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Buscar clientes..."
-            placeholderTextColor={theme.gray[500]}
-            value={searchText}
-            onChangeText={setSearchText}
-          />
-        </View>
-      </UnifiedHeader>
-
       <SafeAreaView style={styles.safeArea}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Clientes</Text>
+          <View style={styles.headerActions}>
+            <TouchableOpacity style={styles.headerAction}>
+              <Ionicons name="search-outline" size={24} color={theme.primary} />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.headerAction} onPress={openCreateModal}>
+              <Ionicons name="add" size={24} color={theme.primary} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Search Bar */}
+        <View style={styles.searchSection}>
+          <View style={styles.searchBar}>
+            <Ionicons name="search-outline" size={20} color={theme.gray[500]} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Buscar clientes..."
+              placeholderTextColor={theme.gray[500]}
+              value={searchText}
+              onChangeText={setSearchText}
+            />
+          </View>
+        </View>
 
         {/* Filters */}
         <View style={styles.filtersSection}>
@@ -378,22 +468,136 @@ export default function ClientsScreen() {
           />
         )}
 
-        {/* Floating Action Button */}
-        <FAB
-          icon="plus"
-          style={styles.fab}
-          color={theme.white}
-          onPress={() => {
-            // Implementar navegação para cadastro de cliente
-          }}
-        />
+
+
+
+        {/* Modal de criação de cliente */}
+        <Modal
+          visible={showCreateModal}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={closeCreateModal}
+        >
+          <KeyboardAvoidingView
+            style={styles.modalContainer}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          >
+            <SafeAreaView style={styles.modalSafeArea}>
+              {/* Header do modal */}
+              <View style={styles.modalHeader}>
+                <TouchableOpacity onPress={closeCreateModal}>
+                  <Ionicons name="close" size={24} color={theme.text} />
+                </TouchableOpacity>
+                <Text style={styles.modalTitle}>Novo Cliente</Text>
+                <View style={{ width: 24 }} />
+              </View>
+
+              {/* Formulário */}
+              <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>Nome *</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={formData.name}
+                    onChangeText={(value) => handleInputChange('name', value)}
+                    placeholder="Digite o nome completo"
+                    placeholderTextColor={theme.gray[500]}
+                  />
+                </View>
+
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>Email *</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={formData.email}
+                    onChangeText={(value) => handleInputChange('email', value)}
+                    placeholder="Digite o email"
+                    placeholderTextColor={theme.gray[500]}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                  />
+                </View>
+
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>Telefone *</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={formData.phone_number}
+                    onChangeText={(value) => handleInputChange('phone_number', value)}
+                    placeholder="Digite o telefone"
+                    placeholderTextColor={theme.gray[500]}
+                    keyboardType="phone-pad"
+                  />
+                </View>
+
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>Documento</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={formData.document}
+                    onChangeText={(value) => handleInputChange('document', value)}
+                    placeholder="CPF ou CNPJ"
+                    placeholderTextColor={theme.gray[500]}
+                    keyboardType="numeric"
+                  />
+                </View>
+
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>Senha *</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={formData.password}
+                    onChangeText={(value) => handleInputChange('password', value)}
+                    placeholder="Digite a senha"
+                    placeholderTextColor={theme.gray[500]}
+                    secureTextEntry
+                  />
+                </View>
+
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>Data de Nascimento</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={formData.birthday}
+                    onChangeText={(value) => handleInputChange('birthday', value)}
+                    placeholder="DD/MM/AAAA"
+                    placeholderTextColor={theme.gray[500]}
+                    keyboardType="numeric"
+                  />
+                </View>
+              </ScrollView>
+
+              {/* Botões */}
+              <View style={styles.modalFooter}>
+                <Button
+                  mode="outlined"
+                  onPress={closeCreateModal}
+                  style={styles.cancelButton}
+                  textColor={theme.text}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  mode="contained"
+                  onPress={handleCreateClient}
+                  loading={creating}
+                  disabled={creating}
+                  style={styles.createButton}
+                  buttonColor={theme.primary}
+                >
+                  {creating ? 'Criando...' : 'Criar Cliente'}
+                </Button>
+              </View>
+            </SafeAreaView>
+          </KeyboardAvoidingView>
+        </Modal>
 
         {/* Bottom Sheet para detalhes do cliente */}
         <ClientDetailsBottomSheet
           client={selectedClient}
-          bottomSheetRef={bottomSheetRef}
+          bottomSheetRef={bottomSheetRef as any}
           onClose={handleCloseBottomSheet}
-          onEdit={handleEditClient}
+          onEdit={handleEditClient as any}
           onCall={handleCall}
           onWhatsApp={handleWhatsApp}
         />
@@ -422,6 +626,11 @@ const createStyles = (theme: any) => StyleSheet.create({
     fontSize: 24,
     fontWeight: '700' as const,
     color: theme.text,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   headerAction: {
     padding: 8,
@@ -549,12 +758,7 @@ const createStyles = (theme: any) => StyleSheet.create({
   separator: {
     height: 12,
   },
-  fab: {
-    position: 'absolute',
-    right: 16,
-    bottom: 100,
-    backgroundColor: theme.primary,
-  },
+
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -586,5 +790,68 @@ const createStyles = (theme: any) => StyleSheet.create({
     color: theme.textSecondary,
     textAlign: 'center' as const,
     lineHeight: 24,
+  },
+  // Modal styles
+  modalContainer: {
+    flex: 1,
+    backgroundColor: theme.background,
+  },
+  modalSafeArea: {
+    flex: 1,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    backgroundColor: theme.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.border,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '600' as const,
+    color: theme.text,
+  },
+  modalContent: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 20,
+  },
+  formGroup: {
+    marginBottom: 20,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: '500' as const,
+    color: theme.text,
+    marginBottom: 8,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: theme.border,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: theme.text,
+    backgroundColor: theme.surface,
+  },
+  modalFooter: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    backgroundColor: theme.surface,
+    borderTopWidth: 1,
+    borderTopColor: theme.border,
+    gap: 12,
+  },
+  cancelButton: {
+    flex: 1,
+    borderColor: theme.border,
+  },
+  createButton: {
+    flex: 1,
   },
 });

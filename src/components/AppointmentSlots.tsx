@@ -66,13 +66,15 @@ interface AppointmentSlotsProps {
   appointments: Appointment[];
   onSlotClick?: (time: string, isEncaixe?: boolean, encaixeEndTime?: string) => void;
   onAppointmentClick?: (appointment: Appointment) => void;
+  onUpdateStatus?: (appointmentId: number, newStatus: 'pending' | 'confirmed' | 'completed' | 'cancelled', appointment: Appointment) => void;
 }
 
 const AppointmentSlots: React.FC<AppointmentSlotsProps> = ({
   schedule,
   appointments,
   onSlotClick,
-  onAppointmentClick
+  onAppointmentClick,
+  onUpdateStatus
 }) => {
   // Se for folga, não mostrar slots de agendamento
   if (schedule.is_day_off) {
@@ -234,6 +236,56 @@ const AppointmentSlots: React.FC<AppointmentSlotsProps> = ({
     }
   };
 
+  // Função para renderizar botões de ação baseados no status
+  const renderActionButtons = (appointment: Appointment) => {
+    if (!onUpdateStatus) return null;
+
+    const { status } = appointment;
+    const buttons = [];
+
+    if (status === 'pending') {
+      buttons.push(
+        <TouchableOpacity
+          key="confirm"
+          style={[styles.actionButton, { backgroundColor: '#4CAF50' }]}
+          onPress={() => onUpdateStatus(appointment.id, 'confirmed', appointment)}
+        >
+          <Text style={styles.actionButtonText}>Confirmar</Text>
+        </TouchableOpacity>
+      );
+    }
+
+    if (status === 'confirmed') {
+      buttons.push(
+        <TouchableOpacity
+          key="complete"
+          style={[styles.actionButton, { backgroundColor: '#2196F3' }]}
+          onPress={() => onUpdateStatus(appointment.id, 'completed', appointment)}
+        >
+          <Text style={styles.actionButtonText}>Concluir</Text>
+        </TouchableOpacity>
+      );
+    }
+
+    if (status !== 'cancelled' && status !== 'completed') {
+      buttons.push(
+        <TouchableOpacity
+          key="cancel"
+          style={[styles.actionButton, { backgroundColor: '#F44336' }]}
+          onPress={() => onUpdateStatus(appointment.id, 'cancelled', appointment)}
+        >
+          <Text style={styles.actionButtonText}>Cancelar</Text>
+        </TouchableOpacity>
+      );
+    }
+
+    return (
+      <View style={styles.actionButtonsContainer}>
+        {buttons}
+      </View>
+    );
+  };
+
   const getStatusText = (status: string) => {
     switch (status) {
       case 'confirmed': return 'Confirmado';
@@ -351,6 +403,8 @@ const AppointmentSlots: React.FC<AppointmentSlotsProps> = ({
                 {appointmentStartingHere.notes && (
                   <Text style={styles.notesText}>{appointmentStartingHere.notes}</Text>
                 )}
+                
+                {appointmentStartingHere.status !== 'free' && renderActionButtons(appointmentStartingHere)}
               </View>
               
               <View style={[
@@ -790,6 +844,24 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 1,
+  },
+  actionButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 12,
+    gap: 8,
+  },
+  actionButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    minWidth: 80,
+    alignItems: 'center',
+  },
+  actionButtonText: {
+    color: colors.white,
+    fontSize: 12,
+    fontWeight: '600',
   },
 });
 

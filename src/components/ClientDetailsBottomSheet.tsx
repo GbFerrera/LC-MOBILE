@@ -195,7 +195,7 @@ export default function ClientDetailsBottomSheet({
             <View style={styles.buttonRow}>
               <Button
                 mode="outlined"
-                icon="call"
+                icon="phone"
                 onPress={() => onCall?.(client.phone_number!)}
                 style={[styles.actionButton, { borderColor: theme.primary }]}
                 labelStyle={{ color: theme.primary }}
@@ -205,7 +205,7 @@ export default function ClientDetailsBottomSheet({
               
               <Button
                 mode="contained"
-                icon="logo-whatsapp"
+                icon="whatsapp"
                 onPress={() => onWhatsApp?.(client.phone_number!)}
                 style={[styles.actionButton, { backgroundColor: '#25D366' }]}
               >
