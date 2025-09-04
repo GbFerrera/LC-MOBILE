@@ -247,11 +247,34 @@ export default function ClientsScreen() {
       return;
     }
 
-    if (!formData.name || !formData.email || !formData.phone_number) {
+    if (!formData.name || !formData.email || !formData.phone_number || !formData.document || !formData.password) {
       Toast.show({
         type: 'error',
         text1: 'Campos obrigatórios',
-        text2: 'Nome, email e telefone são obrigatórios',
+        text2: 'Nome, email, telefone, documento e senha são obrigatórios',
+        position: 'top',
+      });
+      return;
+    }
+
+    // Validar formato do email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      Toast.show({
+        type: 'error',
+        text1: 'Email inválido',
+        text2: 'Por favor, insira um email válido',
+        position: 'top',
+      });
+      return;
+    }
+
+    // Validar senha mínima
+    if (formData.password.length < 6) {
+      Toast.show({
+        type: 'error',
+        text1: 'Senha muito curta',
+        text2: 'A senha deve ter pelo menos 6 caracteres',
         position: 'top',
       });
       return;
@@ -268,12 +291,23 @@ export default function ClientsScreen() {
       });
       closeCreateModal();
       loadClients(); // Recarregar a lista
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao criar cliente:', error);
+      
+      let errorMessage = 'Não foi possível cadastrar o cliente';
+      
+      if (error?.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error?.response?.status === 400) {
+        errorMessage = 'Dados inválidos. Verifique os campos obrigatórios.';
+      } else if (error?.response?.status === 409) {
+        errorMessage = 'Cliente já cadastrado com estes dados.';
+      }
+      
       Toast.show({
         type: 'error',
         text1: 'Erro ao criar cliente',
-        text2: 'Não foi possível cadastrar o cliente',
+        text2: errorMessage,
         position: 'top',
       });
     } finally {
@@ -531,7 +565,7 @@ export default function ClientsScreen() {
                 </View>
 
                 <View style={styles.formGroup}>
-                  <Text style={styles.label}>Documento</Text>
+                  <Text style={styles.label}>Documento *</Text>
                   <TextInput
                     style={styles.input}
                     value={formData.document}
@@ -548,14 +582,14 @@ export default function ClientsScreen() {
                     style={styles.input}
                     value={formData.password}
                     onChangeText={(value) => handleInputChange('password', value)}
-                    placeholder="Digite a senha"
+                    placeholder="Digite a senha (mín. 6 caracteres)"
                     placeholderTextColor={theme.gray[500]}
                     secureTextEntry
                   />
                 </View>
 
                 <View style={styles.formGroup}>
-                  <Text style={styles.label}>Data de Nascimento</Text>
+                  <Text style={styles.label}>Data de Nascimento (Opcional)</Text>
                   <TextInput
                     style={styles.input}
                     value={formData.birthday}

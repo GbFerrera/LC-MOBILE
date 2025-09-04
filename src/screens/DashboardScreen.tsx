@@ -83,6 +83,7 @@ export default function DashboardScreen({ navigation }: any) {
   const [dayOffDates, setDayOffDates] = useState<string[]>([]);
   const [isRemovingDayOff, setIsRemovingDayOff] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
+  const [expandedAppointments, setExpandedAppointments] = useState<{[key: number]: boolean}>({});
 
   // Função para buscar dias de folga do profissional
   const fetchDayOffDates = async () => {
@@ -524,7 +525,9 @@ export default function DashboardScreen({ navigation }: any) {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Agendamentos de Hoje</Text>
-            <Text style={styles.sectionAction}>Ver todos</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Agenda')}>
+              <Text style={styles.sectionAction}>Ver todos</Text>
+            </TouchableOpacity>
           </View>
           
           {isLoading ? (
@@ -539,33 +542,84 @@ export default function DashboardScreen({ navigation }: any) {
             </View>
           ) : appointments.length > 0 ? (
             appointments.map((appointment) => (
-              <Surface key={appointment.id} style={styles.appointmentCard} elevation={1}>
-                <View style={styles.appointmentTime}>
-                  <Text style={styles.timeText}>{appointment.start_time.slice(0, 5)}</Text>
-                </View>
-                <View style={styles.appointmentInfo}>
-                  <Text style={styles.clientName}>{appointment.client?.name || 'Cliente não informado'}</Text>
-                  <Text style={styles.serviceName}>
-                    {appointment.services?.map(s => s.service_name).join(', ') || 'Serviços não informados'}
-                  </Text>
-                  <Text style={styles.servicePrice}>
-                    R$ {appointment.services?.reduce((sum, s) => sum + parseFloat(s.price || '0'), 0).toFixed(2) || '0.00'}
-                  </Text>
-                </View>
-                <View style={styles.appointmentActions}>
-                  <View style={[
-                    styles.statusIndicator,
-                    {
-                      backgroundColor: appointment.status === 'confirmed' 
-                        ? colors.success
-                        : appointment.status === 'pending'
-                        ? colors.warning
-                        : colors.error
-                    }
-                  ]} />
-                  <Ionicons name="chevron-forward" size={20} color={colors.gray[400]} />
-                </View>
-              </Surface>
+              <View key={appointment.id}>
+                <Surface style={styles.appointmentCard} elevation={1}>
+                  <View style={styles.appointmentTime}>
+                    <Text style={styles.timeText}>{appointment.start_time.slice(0, 5)}</Text>
+                  </View>
+                  <View style={styles.appointmentInfo}>
+                    <Text style={styles.clientName}>{appointment.client?.name || 'Cliente não informado'}</Text>
+                    <Text style={styles.serviceName}>
+                      {appointment.services?.map(s => s.service_name).join(', ') || 'Serviços não informados'}
+                    </Text>
+                    <Text style={styles.servicePrice}>
+                      R$ {appointment.services?.reduce((sum, s) => sum + parseFloat(s.price || '0'), 0).toFixed(2) || '0.00'}
+                    </Text>
+                  </View>
+                  <View style={styles.appointmentActions}>
+                    <View style={[
+                      styles.statusIndicator,
+                      {
+                        backgroundColor: appointment.status === 'confirmed' 
+                          ? colors.success
+                          : appointment.status === 'pending'
+                          ? colors.warning
+                          : colors.error
+                      }
+                    ]} />
+                    <TouchableOpacity 
+                      onPress={() => {
+                        setExpandedAppointments(prev => ({
+                          ...prev,
+                          [appointment.id]: !prev[appointment.id]
+                        }));
+                      }}
+                    >
+                      <Ionicons 
+                        name={expandedAppointments[appointment.id] ? "chevron-down" : "chevron-forward"} 
+                        size={20} 
+                        color={colors.gray[400]} 
+                      />
+                    </TouchableOpacity>
+                  </View>
+                </Surface>
+                
+                {/* Detalhes expandidos */}
+                {expandedAppointments[appointment.id] && (
+                  <Surface style={styles.appointmentDetails} elevation={1}>
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Horário de término:</Text>
+                      <Text style={styles.detailValue}>{appointment.end_time.slice(0, 5)}</Text>
+                    </View>
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Telefone:</Text>
+                      <Text style={styles.detailValue}>{appointment.client?.phone_number || 'Não informado'}</Text>
+                    </View>
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Status:</Text>
+                      <Text style={[
+                        styles.detailValue,
+                        {
+                          color: appointment.status === 'confirmed' 
+                            ? colors.success
+                            : appointment.status === 'pending'
+                            ? colors.warning
+                            : colors.error
+                        }
+                      ]}>
+                        {appointment.status === 'confirmed' ? 'Confirmado' : 
+                         appointment.status === 'pending' ? 'Pendente' : 'Cancelado'}
+                      </Text>
+                    </View>
+                    {appointment.notes && (
+                      <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Observações:</Text>
+                        <Text style={styles.detailValue}>{appointment.notes}</Text>
+                      </View>
+                    )}
+                  </Surface>
+                )}
+              </View>
             ))
           ) : (
             <View style={styles.emptyContainer}>
@@ -583,7 +637,7 @@ export default function DashboardScreen({ navigation }: any) {
             <TouchableOpacity onPress={() => navigation.navigate('Agenda')}>
               <Surface style={styles.quickActionCard} elevation={2}>
                 <View style={[styles.quickActionIcon, { backgroundColor: colors.primary + '20' }]}>
-                  <Ionicons name="add" size={24} color={colors.primary} />
+                  <Ionicons name="add" size={28} color={colors.primary} />
                 </View>
                 <Text style={styles.quickActionText}>Novo Agendamento</Text>
               </Surface>
@@ -595,18 +649,13 @@ export default function DashboardScreen({ navigation }: any) {
             }}>
               <Surface style={styles.quickActionCard} elevation={2}>
                 <View style={[styles.quickActionIcon, { backgroundColor: colors.primary + '20' }]}>
-                  <Ionicons name="time-outline" size={24} color={colors.primary} />
+                  <Ionicons name="time-outline" size={28} color={colors.primary} />
                 </View>
                 <Text style={styles.quickActionText}>Adicionar Folga</Text>
               </Surface>
             </TouchableOpacity>
 
-            <Surface style={styles.quickActionCard} elevation={2}>
-              <View style={[styles.quickActionIcon, { backgroundColor: colors.primary + '20' }]}>
-                <Ionicons name="stats-chart-outline" size={24} color={colors.primary} />
-              </View>
-              <Text style={styles.quickActionText}>Relatórios</Text>
-            </Surface>
+         
           </View>
         </View>
         </ScrollView>
@@ -1003,28 +1052,39 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginTop: spacing.sm,
+    gap: 12,
   },
   quickActionCard: {
     flex: 1,
     backgroundColor: colors.white,
     borderRadius: 16,
-    padding: spacing.md,
-    marginHorizontal: 4,
+    padding: spacing.lg,
     alignItems: 'center',
+    minHeight: 120,
+    justifyContent: 'center',
+    elevation: 3,
+    shadowColor: colors.gray[900],
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   quickActionIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
   },
   quickActionText: {
-    fontSize: 12,
+    fontSize: 14,
     textAlign: 'center',
     color: colors.gray[700],
-    fontWeight: '500',
+    fontWeight: '600',
+    lineHeight: 18,
   },
   // Modal styles
   modalContainer: {
@@ -1182,5 +1242,32 @@ const styles = StyleSheet.create({
   profileSection: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
+  },
+  appointmentDetails: {
+    backgroundColor: colors.gray[50],
+    borderRadius: 12,
+    padding: spacing.md,
+    marginTop: spacing.xs,
+    marginBottom: spacing.sm,
+    marginHorizontal: 2,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  detailLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.gray[600],
+    flex: 1,
+  },
+  detailValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.gray[900],
+    flex: 1,
+    textAlign: 'right',
   },
 });
