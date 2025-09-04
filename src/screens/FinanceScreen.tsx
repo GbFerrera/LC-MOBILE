@@ -144,6 +144,13 @@ export default function FinanceScreen() {
 
   // Estados para lista de transações
   const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
+  
+  // Estado para resumo da gaveta
+  const [drawerSummary, setDrawerSummary] = useState({
+    totalIncome: 0,
+    totalExpenses: 0,
+    currentBalance: 0
+  });
 
   // Estados para filtros e período
   const [selectedPeriod, setSelectedPeriod] = useState<'today' | 'week' | 'month' | 'custom'>('week');
@@ -343,7 +350,10 @@ export default function FinanceScreen() {
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
       
-      // Formatar transações para a UI
+      // Formatar transações para a UI e calcular resumo
+      let totalIncome = 0;
+      let totalExpenses = 0;
+      
       const formattedTransactions = sortedTransactions.map(tx => {
         console.log('Formatando transação:', tx);
         
@@ -378,6 +388,13 @@ export default function FinanceScreen() {
           category = 'Geral';
         }
         
+        // Somar para o resumo
+        if (type === 'income') {
+          totalIncome += amount;
+        } else {
+          totalExpenses += amount;
+        }
+        
         return {
           id: tx.id,
           type,
@@ -391,7 +408,19 @@ export default function FinanceScreen() {
         };
       });
       
+      // Calcular saldo atual
+      const initialValue = parseFloat((currentDrawer as any).initial_value || '0');
+      const currentBalance = initialValue + totalIncome - totalExpenses;
+      
+      // Atualizar resumo da gaveta
+      setDrawerSummary({
+        totalIncome,
+        totalExpenses,
+        currentBalance
+      });
+      
       console.log('formattedTransactions:', formattedTransactions);
+      console.log('drawerSummary:', { totalIncome, totalExpenses, currentBalance });
       setRecentTransactions(formattedTransactions.slice(0, 5));
     } catch (error) {
       console.error('Erro ao buscar transações recentes:', error);
@@ -1371,40 +1400,54 @@ export default function FinanceScreen() {
           </View>
         </View>
 
-        {/* Financial Summary */}
-        <View style={styles.section}>
-          <View style={styles.summaryGrid}>
-            <Surface style={styles.summaryCard} elevation={2}>
-              <View style={styles.summaryIcon}>
-                <Ionicons name="trending-up" size={20} color={colors.success} />
-              </View>
-              <Text style={styles.summaryValue}>
-                {formatCurrency(financialData.todayRevenue)}
-              </Text>
-              <Text style={styles.summaryLabel}>Receitas</Text>
-            </Surface>
+        {/* Cash Drawer Summary */}
+        {currentDrawer && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Resumo da Gaveta</Text>
+            <View style={styles.drawerSummaryGrid}>
+              <Surface style={styles.drawerSummaryCard} elevation={2}>
+                <View style={styles.summaryIcon}>
+                  <Ionicons name="play-circle" size={20} color={colors.primary} />
+                </View>
+                <Text style={styles.summaryValue}>
+                  {formatCurrency((currentDrawer as any).initial_value || 0)}
+                </Text>
+                <Text style={styles.summaryLabel}>Valor Inicial</Text>
+              </Surface>
 
-            <Surface style={styles.summaryCard} elevation={2}>
-              <View style={styles.summaryIcon}>
-                <Ionicons name="trending-down" size={20} color={colors.error} />
-              </View>
-              <Text style={styles.summaryValue}>
-                {formatCurrency(financialData.todayExpenses)}
-              </Text>
-              <Text style={styles.summaryLabel}>Despesas</Text>
-            </Surface>
+              <Surface style={styles.drawerSummaryCard} elevation={2}>
+                <View style={styles.summaryIcon}>
+                  <Ionicons name="arrow-down-circle" size={20} color={colors.success} />
+                </View>
+                <Text style={styles.summaryValue}>
+                  {formatCurrency(drawerSummary.totalIncome)}
+                </Text>
+                <Text style={styles.summaryLabel}>Entradas</Text>
+              </Surface>
 
-            <Surface style={styles.summaryCard} elevation={2}>
-              <View style={styles.summaryIcon}>
-                <Ionicons name="wallet" size={20} color={colors.primary} />
-              </View>
-              <Text style={styles.summaryValue}>
-                {formatCurrency(financialData.todayRevenue - financialData.todayExpenses)}
-              </Text>
-              <Text style={styles.summaryLabel}>Lucro</Text>
-            </Surface>
+              <Surface style={styles.drawerSummaryCard} elevation={2}>
+                <View style={styles.summaryIcon}>
+                  <Ionicons name="arrow-up-circle" size={20} color={colors.error} />
+                </View>
+                <Text style={styles.summaryValue}>
+                  {formatCurrency(drawerSummary.totalExpenses)}
+                </Text>
+                <Text style={styles.summaryLabel}>Saídas</Text>
+              </Surface>
+
+              <Surface style={styles.drawerSummaryCard} elevation={2}>
+                <View style={styles.summaryIcon}>
+                  <Ionicons name="wallet" size={20} color={colors.primary} />
+                </View>
+                <Text style={styles.summaryValue}>
+                  {formatCurrency(drawerSummary.currentBalance)}
+                </Text>
+                <Text style={styles.summaryLabel}>Saldo Atual</Text>
+              </Surface>
+            </View>
           </View>
-        </View>
+        )}
+
 
         {/* Quick Actions */}
         {currentDrawer && (
@@ -1435,58 +1478,11 @@ export default function FinanceScreen() {
           </View>
         )}
 
-        {/* Detalhes da Gaveta */}
-        {currentDrawer && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Detalhes da Gaveta</Text>
-              <TouchableOpacity onPress={() => openDrawerDetails()}>
-                <Text style={styles.sectionAction}>Ver Detalhes</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Resumo da Gaveta */}
-            <View style={styles.drawerSummary}>
-              <View style={styles.summaryRow}>
-                <View style={styles.summaryItem}>
-                  <Text style={styles.summaryLabel}>Valor Inicial</Text>
-                  <Text style={styles.summaryValue}>
-                    {formatCurrency(financialData.cashDrawer.initialValue)}
-                  </Text>
-                </View>
-                <View style={styles.summaryItem}>
-                  <Text style={styles.summaryLabel}>Entradas</Text>
-                  <Text style={[styles.summaryValue, { color: colors.success }]}>
-                    {formatCurrency(financialData.todayRevenue)}
-                  </Text>
-                </View>
-              </View>
-              <View style={styles.summaryRow}>
-                <View style={styles.summaryItem}>
-                  <Text style={styles.summaryLabel}>Saídas</Text>
-                  <Text style={[styles.summaryValue, { color: colors.error }]}>
-                    {formatCurrency(financialData.todayExpenses)}
-                  </Text>
-                </View>
-                <View style={styles.summaryItem}>
-                  <Text style={styles.summaryLabel}>Saldo Atual</Text>
-                  <Text style={[styles.summaryValue, { color: colors.primary }]}>
-                    {formatCurrency(financialData.cashDrawer.currentValue)}
-                  </Text>
-                </View>
-              </View>
-            </View>
-
-          </View>
-        )}
-
-
         {/* Recent Transactions */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Transações Recentes</Text>
             <TouchableOpacity onPress={() => {}}>
-              <Text style={styles.sectionAction}>Ver Todas</Text>
             </TouchableOpacity>
           </View>
           
@@ -2299,6 +2295,19 @@ const styles = StyleSheet.create({
   summaryLabel: {
     fontSize: 12,
     color: colors.gray[600],
+  },
+  drawerSummaryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  drawerSummaryCard: {
+    width: '48%',
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    alignItems: 'center',
   },
   sectionTitle: {
     ...typography.h4,
