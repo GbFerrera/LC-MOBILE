@@ -281,6 +281,13 @@ export default function AgendaScreen({ navigation }: any) {
     }
   }, [professionalId]);
 
+  // Fetch appointments when selectedDate changes
+  useEffect(() => {
+    if (professionalId) {
+      fetchAppointments();
+    }
+  }, [selectedDate, professionalId, fetchAppointments]);
+
   const generateWeekDays = () => {
     const days = [];
     const today = new Date();
@@ -759,7 +766,10 @@ export default function AgendaScreen({ navigation }: any) {
                 <TouchableOpacity 
                   key={appointment.id} 
                   style={styles.todayAppointmentCard}
-                  onPress={() => console.log('Today appointment clicked:', appointment)}
+                  onPress={() => {
+                    setSelectedAppointment(appointment);
+                    setShowDetailsDialog(true);
+                  }}
                 >
                   <Text style={styles.todayTimeText}>{appointment.start_time.substring(0, 5)}</Text>
                   <Text style={styles.todayClientName} numberOfLines={2}>
