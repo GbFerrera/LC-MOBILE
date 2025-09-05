@@ -124,6 +124,10 @@ export default function CommandsScreen() {
   const [itemQuantities, setItemQuantities] = useState<Record<string, number>>({});
   const [isCreatingCommand, setIsCreatingCommand] = useState(false);
   const [commandToAddItem, setCommandToAddItem] = useState<string>('');
+  
+  // Estado para modal de detalhes da comanda
+  const [commandDetailsModalVisible, setCommandDetailsModalVisible] = useState(false);
+  const [selectedCommandForDetails, setSelectedCommandForDetails] = useState<CommandDetails | null>(null);
 
   useEffect(() => {
     if (user?.company_id) {
@@ -488,6 +492,12 @@ export default function CommandsScreen() {
     fetchProducts();
   };
 
+  // Função para abrir modal de detalhes da comanda
+  const openCommandDetailsModal = (command: CommandDetails) => {
+    setSelectedCommandForDetails(command);
+    setCommandDetailsModalVisible(true);
+  };
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -613,8 +623,9 @@ export default function CommandsScreen() {
     ) || 0;
 
     return (
-      <Surface key={command.id} style={styles.commandCard} elevation={2}>
-        <View style={styles.commandHeader}>
+      <TouchableOpacity key={command.id} onPress={() => openCommandDetailsModal(command)}>
+        <Surface style={styles.commandCard} elevation={2}>
+          <View style={styles.commandHeader}>
           <View style={styles.commandInfo}>
             <Text style={styles.commandId}>Comanda #{command.id}</Text>
             <Text style={styles.clientName}>{command.client_name}</Text>
@@ -680,7 +691,8 @@ export default function CommandsScreen() {
             </Button>
           </View>
         )}
-      </Surface>
+        </Surface>
+      </TouchableOpacity>
     );
   };
 
@@ -1060,6 +1072,130 @@ export default function CommandsScreen() {
     );
   };
 
+  const renderCommandDetailsModal = () => {
+    if (!selectedCommandForDetails) return null;
+
+    return (
+      <Modal
+        visible={commandDetailsModalVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setCommandDetailsModalVisible(false)}
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Detalhes da Comanda #{selectedCommandForDetails.id}</Text>
+            <TouchableOpacity
+              onPress={() => setCommandDetailsModalVisible(false)}
+              style={styles.closeButton}
+            >
+              <Ionicons name="close" size={24} color={colors.gray[600]} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={styles.modalContent}>
+            {/* Informações da Comanda */}
+            <View style={styles.commandSummary}>
+              <Text style={styles.summaryTitle}>Informações da Comanda</Text>
+              <View style={styles.commandDetailRow}>
+                <Text style={styles.commandDetailLabel}>Cliente:</Text>
+                <Text style={styles.commandDetailValue}>{selectedCommandForDetails.client_name}</Text>
+              </View>
+              <View style={styles.commandDetailRow}>
+                <Text style={styles.commandDetailLabel}>Data:</Text>
+                <Text style={styles.commandDetailValue}>{formatDate(selectedCommandForDetails.created_at)}</Text>
+              </View>
+              <View style={styles.commandDetailRow}>
+                <Text style={styles.commandDetailLabel}>Status:</Text>
+                <Chip
+                  mode="flat"
+                  style={[
+                    styles.statusChip,
+                    {
+                      backgroundColor:
+                        selectedCommandForDetails.status === 'closed' ? colors.success + '20' : colors.warning + '20',
+                    },
+                  ]}
+                  textStyle={{
+                    color: selectedCommandForDetails.status === 'closed' ? colors.success : colors.warning,
+                    fontSize: 12,
+                  }}
+                >
+                  {selectedCommandForDetails.status === 'closed' ? 'Paga' : 'Aberta'}
+                </Chip>
+              </View>
+              <View style={styles.commandDetailRow}>
+                <Text style={styles.commandDetailLabel}>Total:</Text>
+                <Text style={[styles.commandDetailValue, styles.totalValue]}>
+                  {formatCurrency(selectedCommandForDetails.total)}
+                </Text>
+              </View>
+            </View>
+
+            {/* Lista de Itens */}
+            <View style={styles.itemsSection}>
+              <Text style={styles.sectionTitle}>Itens da Comanda ({selectedCommandForDetails.items.length})</Text>
+              {selectedCommandForDetails.items.map((item, index) => (
+                <View key={index} style={styles.itemDetailCard}>
+                  <View style={styles.itemDetailInfo}>
+                    <Text style={styles.itemDetailName}>
+                      {item.name || 'Item'}
+                    </Text>
+                    <Text style={styles.itemDetailDescription}>
+                      Quantidade: {item.quantity}
+                    </Text>
+                    <Text style={styles.itemDetailPrice}>
+                      Preço unitário: {formatCurrency(parseFloat(item.price))}
+                    </Text>
+                  </View>
+                  <View style={styles.itemDetailTotal}>
+                    <Text style={styles.itemDetailTotalText}>
+                      {formatCurrency(parseFloat(item.price) * item.quantity)}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+
+            {/* Informações de Pagamento (se paga) */}
+            {selectedCommandForDetails.status === 'closed' && selectedCommandForDetails.payment?.payment_methods && (
+              <View style={styles.paymentSection}>
+                <Text style={styles.sectionTitle}>Detalhes do Pagamento</Text>
+                <View style={styles.paymentSummary}>
+                  <Text style={styles.paymentDate}>
+                    Pago em: {selectedCommandForDetails.payment.paid_at ? 
+                      formatDate(selectedCommandForDetails.payment.paid_at) : 'Data não informada'}
+                  </Text>
+                  {selectedCommandForDetails.payment.payment_methods.map((method, index) => (
+                    <View key={index} style={styles.paymentMethodDetail}>
+                      <Text style={styles.paymentMethodName}>
+                        {getPaymentMethodLabel(method.method)}
+                      </Text>
+                      <Text style={styles.paymentMethodAmount}>
+                        {formatCurrency(parseFloat(method.amount))}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+          </ScrollView>
+
+          <View style={styles.modalFooter}>
+            <Button
+              mode="contained"
+              onPress={() => setCommandDetailsModalVisible(false)}
+              style={styles.confirmButton}
+              buttonColor={colors.primary}
+            >
+              Fechar
+            </Button>
+          </View>
+        </SafeAreaView>
+      </Modal>
+    );
+  };
+
   const renderAddItemModal = () => {
     return (
       <Modal
@@ -1263,6 +1399,7 @@ export default function CommandsScreen() {
         {renderPaymentModal()}
         {renderCreateCommandModal()}
         {renderAddItemModal()}
+        {renderCommandDetailsModal()}
       </SafeAreaView>
     </View>
   );
@@ -1767,5 +1904,93 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: 8,
     marginRight: spacing.sm,
+  },
+  // Estilos para modal de detalhes da comanda
+  commandDetailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  commandDetailLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.gray[700],
+  },
+  commandDetailValue: {
+    fontSize: 14,
+    color: colors.gray[900],
+    flex: 1,
+    textAlign: 'right',
+  },
+  totalValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: colors.primary,
+  },
+  itemsSection: {
+    marginBottom: spacing.lg,
+  },
+  itemDetailCard: {
+    backgroundColor: colors.white,
+    borderRadius: 8,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.gray[200],
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  itemDetailInfo: {
+    flex: 1,
+  },
+  itemDetailName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.gray[900],
+    marginBottom: 4,
+  },
+  itemDetailDescription: {
+    fontSize: 12,
+    color: colors.gray[600],
+    marginBottom: 2,
+  },
+  itemDetailPrice: {
+    fontSize: 12,
+    color: colors.gray[600],
+  },
+  itemDetailTotal: {
+    alignItems: 'flex-end',
+  },
+  itemDetailTotalText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: colors.primary,
+  },
+  paymentSummary: {
+    backgroundColor: colors.gray[50],
+    borderRadius: 8,
+    padding: spacing.md,
+  },
+  paymentDate: {
+    fontSize: 12,
+    color: colors.gray[600],
+    marginBottom: spacing.sm,
+  },
+  paymentMethodDetail: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+  },
+  paymentMethodName: {
+    fontSize: 14,
+    color: colors.gray[700],
+  },
+  paymentMethodAmount: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primary,
   },
 });
