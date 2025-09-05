@@ -16,6 +16,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography } from '../theme/theme';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { api, Appointment, Professional, scheduleService } from '../services/api';
 import UnifiedHeader from '../components/UnifiedHeader';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay } from 'date-fns';
@@ -69,6 +70,8 @@ interface ScheduleResponse {
 
 export default function DashboardScreen({ navigation }: any) {
   const { user } = useAuth();
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
   const [scheduleData, setScheduleData] = useState<ScheduleResponse | null>(null);
   const [weeklyData, setWeeklyData] = useState<AppointmentData[]>([]);
   const [monthlyData, setMonthlyData] = useState<AppointmentData[]>([]);
@@ -789,10 +792,10 @@ export default function DashboardScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: theme.background,
   },
   safeArea: {
     flex: 1,
@@ -801,7 +804,7 @@ const styles = StyleSheet.create({
     paddingBottom: 140, // Espaço para a navegação customizada
   },
   header: {
-    backgroundColor: colors.white,
+    backgroundColor: theme.surface,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.lg,
   },
@@ -830,19 +833,19 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '600' as const,
     lineHeight: 28,
-    color: colors.gray[900],
+    color: theme.text,
   },
   date: {
     fontSize: 14,
     fontWeight: 'normal' as const,
     lineHeight: 20,
-    color: colors.gray[600],
+    color: theme.textSecondary,
     textTransform: 'capitalize',
   },
   scheduleInfo: {
     fontSize: 12,
     fontWeight: '500' as const,
-    color: colors.primary,
+    color: theme.primary,
     marginTop: 4,
   },
   headerActions: {
@@ -860,7 +863,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: colors.primary,
+    backgroundColor: theme.primary,
   },
   statsContainer: {
     padding: spacing.md,
@@ -879,30 +882,30 @@ const styles = StyleSheet.create({
   ratingBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white + '30',
+    backgroundColor: theme.white + '30',
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,
     borderRadius: 12,
   },
   ratingText: {
-    color: colors.white,
+    color: theme.white,
     fontSize: 14,
     fontWeight: '600',
     marginLeft: 4,
   },
   cardTitle: {
-    color: colors.white,
+    color: theme.white,
     fontSize: 16,
     marginBottom: 4,
   },
   cardValue: {
-    color: colors.white,
+    color: theme.white,
     fontSize: 32,
     fontWeight: 'bold',
     marginBottom: 4,
   },
   cardSubtitle: {
-    color: colors.white + 'CC',
+    color: theme.white + 'CC',
     fontSize: 14,
     marginBottom: spacing.md,
   },
@@ -910,12 +913,12 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   calendarLabel: {
-    color: colors.white,
+    color: theme.white,
     fontSize: 14,
     marginBottom: spacing.sm,
   },
   calendarDayTextActive: {
-    color: colors.primary,
+    color: theme.primary,
     fontWeight: 'bold',
   },
   statsGrid: {
@@ -924,7 +927,7 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: theme.surface,
     borderRadius: 16,
     padding: spacing.md,
     marginHorizontal: 4,
@@ -941,12 +944,12 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: colors.gray[900],
+    color: theme.text,
     marginBottom: 2,
   },
   statLabel: {
     fontSize: 12,
-    color: colors.gray[600],
+    color: theme.textSecondary,
   },
   section: {
     padding: spacing.md,
@@ -961,15 +964,15 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '600' as const,
     lineHeight: 28,
-    color: colors.gray[900],
+    color: theme.text,
   },
   sectionAction: {
-    color: colors.primary,
+    color: theme.primary,
     fontSize: 14,
     fontWeight: '600',
   },
   appointmentCard: {
-    backgroundColor: colors.white,
+    backgroundColor: theme.surface,
     borderRadius: 16,
     padding: spacing.md,
     marginBottom: spacing.sm,
@@ -990,12 +993,12 @@ const styles = StyleSheet.create({
   clientName: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.gray[900],
+    color: theme.text,
     marginBottom: 2,
   },
   serviceName: {
     fontSize: 14,
-    color: colors.gray[600],
+    color: theme.textSecondary,
   },
   servicePrice: {
     fontSize: 12,
@@ -1009,7 +1012,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 14,
-    color: colors.gray[600],
+    color: theme.textSecondary,
     marginTop: spacing.sm,
   },
   errorContainer: {
@@ -1028,13 +1031,13 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: colors.gray[600],
+    color: theme.textSecondary,
     marginTop: spacing.sm,
     fontWeight: '600' as const,
   },
   emptySubtext: {
     fontSize: 14,
-    color: colors.gray[500],
+    color: theme.textSecondary,
     marginTop: 4,
   },
   appointmentActions: {
@@ -1056,14 +1059,14 @@ const styles = StyleSheet.create({
   },
   quickActionCard: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: theme.surface,
     borderRadius: 16,
     padding: spacing.lg,
     alignItems: 'center',
     minHeight: 120,
     justifyContent: 'center',
     elevation: 3,
-    shadowColor: colors.gray[900],
+    shadowColor: theme.text,
     shadowOffset: {
       width: 0,
       height: 2,
@@ -1082,7 +1085,7 @@ const styles = StyleSheet.create({
   quickActionText: {
     fontSize: 14,
     textAlign: 'center',
-    color: colors.gray[700],
+    color: theme.text,
     fontWeight: '600',
     lineHeight: 18,
   },
@@ -1212,6 +1215,9 @@ const styles = StyleSheet.create({
     marginVertical: 12,
     paddingHorizontal: 20,
     gap: 20,
+    backgroundColor: theme.card,
+    paddingVertical: spacing.sm,
+    borderRadius: 8,
   },
   legendItem: {
     flexDirection: 'row',
@@ -1234,7 +1240,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: colors.white + 'CC',
+    backgroundColor: theme.surface + 'CC',
     alignItems: 'center',
     justifyContent: 'center',
   },

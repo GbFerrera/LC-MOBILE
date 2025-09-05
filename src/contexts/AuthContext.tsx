@@ -88,7 +88,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (!response.data || !response.data.token) {
         return {
           success: false,
-          error: 'Token não recebido do servidor'
+          error: response.data?.message || 'E-mail ou senha inválidos'
         };
       }
       

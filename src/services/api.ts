@@ -131,6 +131,14 @@ export interface ServiceResponse {
   updated_at: string;
 }
 
+export interface CreateServiceData {
+  service_name: string;
+  service_description?: string | null;
+  service_price: string;
+  service_duration: number;
+  professional_id: number;
+}
+
 export interface Appointment {
   id: number;
   professional_id: number;
@@ -219,8 +227,8 @@ export const professionalService = {
 
 export const serviceService = {
   getAll: () => api.get<ServiceResponse[]>('/service'),
-  
-  create: (data: Partial<ServiceResponse>) =>
+
+  create: (data: CreateServiceData) =>
     api.post<ServiceResponse>('/service', data),
   
   update: (id: number, data: Partial<ServiceResponse>) =>
@@ -284,6 +292,8 @@ export const authService = {
   // Salvar dados de autenticação
   saveAuthData: async (data: AuthResponse, userType: 'team' | 'client' | 'admin') => {
     const userData = data.user || data.admin;
+    console.log('Salvando dados de auth - userData:', userData);
+    console.log('Company ID a ser salvo:', userData?.company_id);
     await AsyncStorage.multiSet([
       ['authToken', data.token],
       ['userData', JSON.stringify(userData)],

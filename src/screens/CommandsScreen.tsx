@@ -14,6 +14,7 @@ import {
 import { Surface, Button, Chip } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography } from '../theme/theme';
+import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import Toast from 'react-native-toast-message';
 import UnifiedHeader from '../components/UnifiedHeader';
@@ -33,6 +34,8 @@ const PAYMENT_METHODS = [
 ];
 
 export default function CommandsScreen() {
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
   const { user } = useAuth();
   const [commands, setCommands] = useState<CommandDetails[]>([]);
   const [loading, setLoading] = useState(true);
@@ -265,9 +268,9 @@ export default function CommandsScreen() {
               mode="contained"
               onPress={() => openPaymentModal(command)}
               style={styles.payButton}
-              buttonColor={colors.primary}
+              buttonColor={theme.primary}
             >
-              <Ionicons name="card-outline" size={16} color={colors.white} />
+              <Ionicons name="card-outline" size={16} color={theme.white} />
               Fechar Comanda
             </Button>
           </View>
@@ -325,7 +328,7 @@ export default function CommandsScreen() {
                       name={method.icon as any}
                       size={20}
                       color={
-                        selectedPaymentType === method.value ? colors.white : colors.primary
+                        selectedPaymentType === method.value ? theme.white : theme.primary
                       }
                     />
                     <Text
@@ -356,7 +359,7 @@ export default function CommandsScreen() {
                 mode="contained"
                 onPress={addPaymentMethod}
                 style={styles.addButton}
-                buttonColor={colors.primary}
+                buttonColor={theme.primary}
                 disabled={!paymentAmount || parseFloat(paymentAmount) <= 0}
               >
                 Adicionar
@@ -380,7 +383,7 @@ export default function CommandsScreen() {
                       onPress={() => removePaymentMethod(index)}
                       style={styles.removeButton}
                     >
-                      <Ionicons name="trash-outline" size={20} color={colors.error} />
+                      <Ionicons name="trash-outline" size={20} color={theme.error} />
                     </TouchableOpacity>
                   </View>
                 ))}
@@ -400,7 +403,7 @@ export default function CommandsScreen() {
               mode="contained"
               onPress={processPayment}
               style={styles.confirmButton}
-              buttonColor={colors.primary}
+              buttonColor={theme.primary}
               disabled={remaining > 0.01 || selectedPaymentMethods.length === 0 || isProcessingPayment}
               loading={isProcessingPayment}
             >
@@ -448,10 +451,10 @@ export default function CommandsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: theme.background,
   },
   safeArea: {
     flex: 1,
@@ -462,14 +465,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.lg,
-    backgroundColor: colors.white,
+    backgroundColor: theme.surface,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray[200],
+    borderBottomColor: theme.border,
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: '600',
-    color: colors.gray[900],
+    color: theme.text,
   },
   refreshButton: {
     padding: spacing.sm,
@@ -485,7 +488,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    color: colors.gray[600],
+    color: theme.textSecondary,
   },
   emptyContainer: {
     flex: 1,
@@ -495,14 +498,14 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: colors.gray[600],
+    color: theme.textSecondary,
     marginTop: spacing.md,
   },
   commandsList: {
     padding: spacing.md,
   },
   commandCard: {
-    backgroundColor: colors.white,
+    backgroundColor: theme.surface,
     borderRadius: 16,
     padding: spacing.md,
     marginBottom: spacing.md,
@@ -519,17 +522,17 @@ const styles = StyleSheet.create({
   commandId: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.gray[900],
+    color: theme.text,
     marginBottom: 2,
   },
   clientName: {
     fontSize: 14,
-    color: colors.gray[700],
+    color: theme.text,
     marginBottom: 2,
   },
   commandDate: {
     fontSize: 12,
-    color: colors.gray[500],
+    color: theme.textSecondary,
   },
   commandStatus: {
     alignItems: 'flex-end',
@@ -545,23 +548,23 @@ const styles = StyleSheet.create({
   },
   itemsCount: {
     fontSize: 14,
-    color: colors.gray[600],
+    color: theme.textSecondary,
   },
   commandTotal: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: colors.gray[900],
+    color: theme.text,
   },
   paymentMethods: {
     marginTop: spacing.sm,
     paddingTop: spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: colors.gray[200],
+    borderTopColor: theme.border,
   },
   paymentMethodsTitle: {
     fontSize: 12,
     fontWeight: '600',
-    color: colors.gray[700],
+    color: theme.textSecondary,
     marginBottom: spacing.xs,
   },
   paymentMethodItem: {
@@ -569,13 +572,13 @@ const styles = StyleSheet.create({
   },
   paymentMethodText: {
     fontSize: 12,
-    color: colors.gray[600],
+    color: theme.textSecondary,
   },
   commandActions: {
     marginTop: spacing.sm,
     paddingTop: spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: colors.gray[200],
+    borderTopColor: theme.border,
   },
   payButton: {
     borderRadius: 12,
@@ -583,7 +586,7 @@ const styles = StyleSheet.create({
   // Modal styles
   modalContainer: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: theme.surface,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -592,12 +595,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.lg,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray[200],
+    borderBottomColor: theme.border,
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: colors.gray[900],
+    color: theme.text,
   },
   closeButton: {
     padding: spacing.sm,
@@ -607,7 +610,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   commandSummary: {
-    backgroundColor: colors.gray[50],
+    backgroundColor: theme.surface,
     borderRadius: 12,
     padding: spacing.md,
     marginBottom: spacing.lg,
@@ -615,24 +618,24 @@ const styles = StyleSheet.create({
   summaryTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.gray[900],
+    color: theme.text,
     marginBottom: spacing.sm,
   },
   summaryClient: {
     fontSize: 14,
-    color: colors.gray[700],
+    color: theme.textSecondary,
     marginBottom: spacing.xs,
   },
   summaryTotal: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: colors.gray[900],
+    color: theme.text,
     marginBottom: spacing.xs,
   },
   summaryRemaining: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.primary,
+    color: theme.primary,
   },
   paymentSection: {
     marginBottom: spacing.lg,
@@ -640,7 +643,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.gray[900],
+    color: theme.text,
     marginBottom: spacing.md,
   },
   paymentTypeSelector: {
@@ -655,21 +658,21 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: colors.primary,
-    backgroundColor: colors.white,
+    borderColor: theme.primary,
+    backgroundColor: theme.surface,
     marginRight: spacing.sm,
     marginBottom: spacing.sm,
   },
   paymentTypeButtonActive: {
-    backgroundColor: colors.primary,
+    backgroundColor: theme.primary,
   },
   paymentTypeText: {
     fontSize: 12,
-    color: colors.primary,
+    color: theme.primary,
     marginLeft: spacing.xs,
   },
   paymentTypeTextActive: {
-    color: colors.white,
+    color: theme.white,
   },
   amountInput: {
     marginBottom: spacing.md,
@@ -677,17 +680,17 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.gray[700],
+    color: theme.textSecondary,
     marginBottom: spacing.xs,
   },
   textInput: {
     borderWidth: 1,
-    borderColor: colors.gray[300],
+    borderColor: theme.border,
     borderRadius: 8,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     fontSize: 16,
-    color: colors.gray[900],
+    color: theme.text,
   },
   addButton: {
     borderRadius: 8,
@@ -699,7 +702,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: colors.gray[50],
+    backgroundColor: theme.surface,
     borderRadius: 8,
     padding: spacing.md,
     marginBottom: spacing.sm,
@@ -710,12 +713,12 @@ const styles = StyleSheet.create({
   selectedPaymentMethod: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.gray[900],
+    color: theme.text,
   },
   selectedPaymentAmount: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: colors.primary,
+    color: theme.primary,
   },
   removeButton: {
     padding: spacing.sm,
@@ -725,7 +728,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.lg,
     borderTopWidth: 1,
-    borderTopColor: colors.gray[200],
+    borderTopColor: theme.border,
   },
   cancelButton: {
     flex: 1,

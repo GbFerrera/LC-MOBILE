@@ -16,6 +16,7 @@ import {
 import { Surface, FAB, Chip, Divider, Button } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography } from '../theme/theme';
+import { useTheme } from '../contexts/ThemeContext';
 import { api } from '../services/api';
 import { UpdateAppointmentStatus, CancelAppointment } from '../services/appointmentService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -81,6 +82,8 @@ interface ScheduleResponse {
 }
 
 export default function AgendaScreen({ navigation }: any) {
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
   const { user } = useAuth();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -1504,18 +1507,18 @@ export default function AgendaScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
   slotInfoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.primary + '10',
+    backgroundColor: theme.primary + '10',
     padding: 12,
     borderRadius: 8,
   },
   slotInfoText: {
     fontSize: 14,
     fontWeight: '500',
-    color: colors.primary,
+    color: theme.primary,
     marginLeft: 6,
   },
   formGroup: {
@@ -1524,14 +1527,14 @@ const styles = StyleSheet.create({
   formLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.gray[700],
+    color: theme.text,
     marginBottom: 8,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: colors.gray[300],
+    borderColor: theme.border,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -1543,12 +1546,12 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 14,
-    color: colors.gray[800],
+    color: theme.text,
     padding: 0,
   },
   pickerContainer: {
     borderWidth: 1,
-    borderColor: colors.gray[300],
+    borderColor: theme.border,
     borderRadius: 8,
     maxHeight: 150,
   },
@@ -1561,31 +1564,31 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray[200],
+    borderBottomColor: theme.border,
   },
   clientItemSelected: {
-    backgroundColor: colors.primary,
+    backgroundColor: theme.primary,
   },
   clientItemIcon: {
     marginRight: 8,
   },
   clientItemText: {
     fontSize: 14,
-    color: colors.gray[800],
+    color: theme.text,
   },
   clientItemTextSelected: {
-    color: colors.white,
+    color: theme.white,
     fontWeight: '500',
   },
   emptyResultText: {
     padding: 12,
     textAlign: 'center',
-    color: colors.gray[500],
+    color: theme.textSecondary,
     fontStyle: 'italic',
   },
   servicesContainer: {
     borderWidth: 1,
-    borderColor: colors.gray[300],
+    borderColor: theme.border,
     borderRadius: 8,
     maxHeight: 200,
   },
@@ -1598,18 +1601,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray[200],
+    borderBottomColor: theme.border,
   },
   serviceItemSelected: {
-    backgroundColor: colors.primary + '20',
+    backgroundColor: theme.primary + '20',
   },
   serviceItemCheckbox: {
     width: 20,
     height: 20,
     borderRadius: 4,
     borderWidth: 2,
-    borderColor: colors.primary,
-    backgroundColor: colors.primary,
+    borderColor: theme.primary,
+    backgroundColor: theme.primary,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 10,
@@ -1620,20 +1623,20 @@ const styles = StyleSheet.create({
   serviceItemName: {
     fontSize: 14,
     fontWeight: '500',
-    color: colors.gray[800],
+    color: theme.text,
   },
   serviceItemPrice: {
     fontSize: 12,
-    color: colors.gray[600],
+    color: theme.textSecondary,
     marginTop: 2,
   },
   notesInput: {
     borderWidth: 1,
-    borderColor: colors.gray[300],
+    borderColor: theme.border,
     borderRadius: 8,
     padding: 12,
     fontSize: 14,
-    color: colors.gray[800],
+    color: theme.text,
     textAlignVertical: 'top',
     minHeight: 80,
   },
@@ -1645,15 +1648,15 @@ const styles = StyleSheet.create({
   cancelButton: {
     flex: 1,
     marginRight: 8,
-    borderColor: colors.gray[300],
+    borderColor: theme.border,
   },
   createButton: {
     flex: 2,
-    backgroundColor: colors.primary,
+    backgroundColor: theme.primary,
   },
   editButton: {
     flex: 2,
-    backgroundColor: colors.primary,
+    backgroundColor: theme.primary,
   },
   detailsSection: {
     marginBottom: 12,
@@ -1661,11 +1664,11 @@ const styles = StyleSheet.create({
   detailsSectionTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.gray[700],
+    color: theme.text,
     marginBottom: 8,
   },
   detailsCard: {
-    backgroundColor: colors.gray[100],
+    backgroundColor: theme.card,
     borderRadius: 8,
     padding: 12,
     flexDirection: 'row',
@@ -1673,7 +1676,7 @@ const styles = StyleSheet.create({
   },
   detailsCardText: {
     fontSize: 14,
-    color: colors.gray[800],
+    color: theme.text,
     marginLeft: 8,
     flex: 1,
   },
@@ -1685,13 +1688,13 @@ const styles = StyleSheet.create({
   },
   serviceText: {
     fontSize: 14,
-    color: colors.gray[800],
+    color: theme.text,
     flex: 1,
   },
   servicePrice: {
     fontSize: 14,
     fontWeight: '500',
-    color: colors.gray[700],
+    color: theme.text,
   },
   statusBadge: {
     flexDirection: 'row',
@@ -1713,11 +1716,11 @@ const styles = StyleSheet.create({
   },
   notesText: {
     fontSize: 14,
-    color: colors.gray[800],
+    color: theme.text,
     flex: 1,
   },
   todaySection: {
-    backgroundColor: colors.white,
+    backgroundColor: theme.surface,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
   },
@@ -1731,16 +1734,16 @@ const styles = StyleSheet.create({
   },
   emptyTodayText: {
     fontSize: 14,
-    color: colors.gray[500],
+    color: theme.textSecondary,
   },
   todayAppointmentCard: {
-    backgroundColor: colors.white,
+    backgroundColor: theme.surface,
     borderRadius: 8,
     padding: 10,
     marginRight: 8,
     width: 100,
     borderWidth: 1,
-    borderColor: colors.gray[200],
+    borderColor: theme.border,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
@@ -1750,13 +1753,13 @@ const styles = StyleSheet.create({
   todayTimeText: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: colors.primary,
+    color: theme.primary,
     marginBottom: 4,
   },
   todayClientName: {
     fontSize: 11,
     fontWeight: '500',
-    color: colors.gray[800],
+    color: theme.text,
     marginBottom: 6,
     lineHeight: 14,
   },
@@ -1769,7 +1772,7 @@ const styles = StyleSheet.create({
   todayStatusText: {
     fontSize: 9,
     fontWeight: '600',
-    color: colors.white,
+    color: theme.white,
     textTransform: 'capitalize',
   },
   loadingContainer: {
@@ -1779,7 +1782,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: spacing.md,
-    color: colors.gray[600],
+    color: theme.textSecondary,
     fontSize: 16,
   },
   errorContainer: {
@@ -1789,19 +1792,19 @@ const styles = StyleSheet.create({
   },
   errorText: {
     marginTop: spacing.md,
-    color: colors.error,
+    color: theme.error,
     fontSize: 16,
     textAlign: 'center',
     marginBottom: spacing.md,
   },
   retryButton: {
-    backgroundColor: colors.primary,
+    backgroundColor: theme.primary,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderRadius: 8,
   },
   retryButtonText: {
-    color: colors.white,
+    color: theme.white,
     fontWeight: '600',
   },
   emptyContainer: {
@@ -1811,13 +1814,13 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     marginTop: spacing.md,
-    color: colors.gray[600],
+    color: theme.textSecondary,
     fontSize: 16,
     textAlign: 'center',
   },
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: theme.background,
   },
   safeArea: {
     flex: 1,
@@ -1831,22 +1834,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.lg,
-    backgroundColor: colors.white,
+    backgroundColor: theme.surface,
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: '600' as const,
     lineHeight: 32,
-    color: colors.gray[900],
+    color: theme.text,
   },
   headerAction: {
     padding: spacing.sm,
   },
   weekCalendar: {
-    backgroundColor: colors.white,
+    backgroundColor: theme.surface,
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray[200],
+    borderBottomColor: theme.border,
   },
   dayButton: {
     alignItems: 'center',
@@ -1857,28 +1860,28 @@ const styles = StyleSheet.create({
     minWidth: 60,
   },
   dayButtonSelected: {
-    backgroundColor: colors.primary,
+    backgroundColor: theme.primary,
   },
   dayButtonToday: {
-    backgroundColor: colors.primary + '20',
+    backgroundColor: theme.primary + '20',
   },
   dayName: {
     fontSize: 12,
-    color: colors.gray[600],
+    color: theme.textSecondary,
     textTransform: 'capitalize',
     marginBottom: 4,
   },
   dayNameSelected: {
-    color: colors.white,
+    color: theme.white,
     fontWeight: '600',
   },
   dayNumber: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: colors.gray[900],
+    color: theme.text,
   },
   dayNumberSelected: {
-    color: colors.white,
+    color: theme.white,
   },
   appointmentsList: {
     flex: 1,
@@ -1887,20 +1890,20 @@ const styles = StyleSheet.create({
   appointmentsHeader: {
     paddingVertical: spacing.lg,
     paddingHorizontal: spacing.md,
-    backgroundColor: colors.gray[50],
+    backgroundColor: theme.card,
   },
   appointmentsTitle: {
     fontSize: 18,
     fontWeight: '600' as const,
-    color: colors.gray[900],
+    color: theme.text,
     marginBottom: 4,
   },
   appointmentsCount: {
     fontSize: 14,
-    color: colors.gray[500],
+    color: theme.textSecondary,
   },
   appointmentCard: {
-    backgroundColor: colors.white,
+    backgroundColor: theme.surface,
     borderRadius: 16,
     padding: spacing.md,
     marginBottom: spacing.md,
@@ -1914,11 +1917,11 @@ const styles = StyleSheet.create({
   timeText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: colors.primary,
+    color: theme.primary,
   },
   durationText: {
     fontSize: 12,
-    color: colors.gray[500],
+    color: theme.textSecondary,
     marginTop: 2,
   },
   appointmentInfo: {
@@ -1927,12 +1930,12 @@ const styles = StyleSheet.create({
   clientName: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.gray[900],
+    color: theme.text,
     marginBottom: 4,
   },
   serviceName: {
     fontSize: 14,
-    color: colors.gray[600],
+    color: theme.textSecondary,
     marginBottom: 8,
   },
   statusContainer: {
@@ -1964,7 +1967,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     ...typography.h4,
-    color: colors.gray[900],
+    color: theme.text,
     marginBottom: spacing.md,
   },
   timeSlots: {
@@ -1972,20 +1975,20 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   timeSlot: {
-    backgroundColor: colors.white,
+    backgroundColor: theme.surface,
     borderRadius: 12,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     marginRight: spacing.sm,
     marginBottom: spacing.sm,
     borderWidth: 1,
-    borderColor: colors.gray[200],
+    borderColor: theme.border,
     minWidth: 70,
     alignItems: 'center',
   },
   timeSlotText: {
     fontSize: 14,
-    color: colors.gray[700],
+    color: theme.text,
     fontWeight: '500',
   },
   fab: {
@@ -1993,12 +1996,12 @@ const styles = StyleSheet.create({
     margin: spacing.md,
     right: 0,
     bottom: 0,
-    backgroundColor: colors.primary,
+    backgroundColor: theme.primary,
   },
   // Calendar Modal Styles
   modalContainer: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: theme.surface,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -2007,11 +2010,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.lg,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray[200],
+    borderBottomColor: theme.border,
   },
   modalTitle: {
     ...typography.h3,
-    color: colors.gray[900],
+    color: theme.text,
     textTransform: 'capitalize',
   },
   modalHeaderSpacer: {
@@ -2035,13 +2038,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray[200],
+    borderBottomColor: theme.border,
     marginBottom: spacing.md,
   },
   weekDayText: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.gray[600],
+    color: theme.textSecondary,
     textAlign: 'center',
     width: 40,
   },
@@ -2062,21 +2065,21 @@ const styles = StyleSheet.create({
     marginVertical: 4,
   },
   todayCalendarDay: {
-    backgroundColor: colors.gray[100],
+    backgroundColor: theme.card,
   },
   selectedCalendarDay: {
-    backgroundColor: colors.primary,
+    backgroundColor: theme.primary,
   },
   calendarDayText: {
     fontSize: 16,
-    color: colors.gray[900],
+    color: theme.text,
   },
   todayCalendarDayText: {
-    color: colors.primary,
+    color: theme.primary,
     fontWeight: '600',
   },
   selectedCalendarDayText: {
-    color: colors.white,
+    color: theme.white,
     fontWeight: '600',
   },
   // Dialog Styles
@@ -2088,7 +2091,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   dialogContainer: {
-    backgroundColor: colors.white,
+    backgroundColor: theme.surface,
     borderRadius: 16,
     maxHeight: '85%',
     width: '95%',
@@ -2111,12 +2114,12 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.md,
     marginBottom: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray[200],
+    borderBottomColor: theme.border,
   },
   dialogTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: colors.gray[900],
+    color: theme.text,
     flex: 1,
   },
   closeButton: {
@@ -2125,12 +2128,12 @@ const styles = StyleSheet.create({
   },
   // Switch Styles
   switchContainer: {
-    backgroundColor: colors.gray[50],
+    backgroundColor: theme.card,
     borderRadius: 12,
     padding: spacing.md,
     marginBottom: spacing.md,
     borderWidth: 1,
-    borderColor: colors.gray[200],
+    borderColor: theme.border,
   },
   switchRow: {
     flexDirection: 'row',
@@ -2147,10 +2150,10 @@ const styles = StyleSheet.create({
   timeInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: theme.surface,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: colors.gray[300],
+    borderColor: theme.border,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
   },
@@ -2160,7 +2163,7 @@ const styles = StyleSheet.create({
   timeInput: {
     flex: 1,
     fontSize: 16,
-    color: colors.gray[900],
+    color: theme.text,
     paddingLeft: spacing.sm,
   },
   // Estilos do Dialog de Detalhes
@@ -2178,15 +2181,15 @@ const styles = StyleSheet.create({
   detailsTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: colors.gray[900],
+    color: theme.text,
   },
   detailsSubtitle: {
     fontSize: 14,
-    color: colors.gray[600],
+    color: theme.textSecondary,
     marginBottom: spacing.md,
   },
   appointmentInfoCard: {
-    backgroundColor: colors.gray[50],
+    backgroundColor: theme.card,
     borderRadius: 12,
     padding: spacing.md,
     flexDirection: 'row',
@@ -2200,12 +2203,12 @@ const styles = StyleSheet.create({
   appointmentTimeText: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.gray[900],
+    color: theme.text,
     marginBottom: 4,
   },
   appointmentServiceText: {
     fontSize: 14,
-    color: colors.gray[600],
+    color: theme.textSecondary,
   },
   statusDropdown: {
     flexDirection: 'row',
@@ -2236,13 +2239,13 @@ const styles = StyleSheet.create({
   },
   clientInfoLabel: {
     fontSize: 12,
-    color: colors.gray[600],
+    color: theme.textSecondary,
     marginBottom: 4,
     fontWeight: '500',
   },
   clientInfoValue: {
     fontSize: 14,
-    color: colors.gray[900],
+    color: theme.text,
     fontWeight: '500',
   },
 });

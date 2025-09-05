@@ -11,12 +11,16 @@ import {
   Image,
   ActivityIndicator,
   FlatList,
+  Modal,
+  TextInput,
+  Alert,
 } from "react-native";
 import { Surface, Button, Divider } from "react-native-paper";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../contexts/ThemeContext";
 import { useAuth } from "../contexts/AuthContext";
 import { baseURL } from "../services/base_URL";
+import { serviceService, CreateServiceData } from '../services/api';
 
 export default function ProfileScreen() {
   const { theme, isDarkMode, toggleTheme: toggleThemeFromContext } = useTheme();
@@ -61,6 +65,16 @@ export default function ProfileScreen() {
       phone_number: "",
     },
   ]);
+  
+  // Estados para o modal de criação de serviços
+  const [showServiceModal, setShowServiceModal] = useState(false);
+  const [serviceForm, setServiceForm] = useState({
+    name: '',
+    price: '',
+    duration: '',
+    description: ''
+  });
+  const [isCreatingService, setIsCreatingService] = useState(false);
   type Service = {
     id: number;
     name: string;
@@ -71,6 +85,73 @@ export default function ProfileScreen() {
   };
 
   const { logout, user } = useAuth();
+
+  // Função para criar um novo serviço
+  const createService = async () => {
+    if (!serviceForm.name || !serviceForm.price || !serviceForm.duration) {
+      Alert.alert('Erro', 'Por favor, preencha todos os campos obrigatórios.');
+      return;
+    }
+
+    setIsCreatingService(true);
+    try {
+      const companyId = await AsyncStorage.getItem('companyId');
+      console.log('Company ID obtido do AsyncStorage:', companyId);
+      if (!companyId) {
+        Alert.alert('Erro', 'ID da empresa não encontrado.');
+        return;
+      }
+
+      if (!user?.id) {
+        Alert.alert('Erro', 'Usuário não autenticado.');
+        return;
+      }
+
+      const serviceData: CreateServiceData = {
+        service_name: serviceForm.name,
+        service_price: serviceForm.price,
+        service_duration: parseInt(serviceForm.duration),
+        service_description: serviceForm.description || null,
+        professional_id: parseInt(user.id),
+      };
+
+      console.log('Dados sendo enviados para criar serviço:', serviceData);
+      console.log('Company ID:', companyId);
+      console.log('User ID:', user?.id);
+      
+      const response = await serviceService.create(serviceData);
+      
+      if (response.error) {
+        Alert.alert('Erro', response.error);
+      } else {
+        Alert.alert('Sucesso', 'Serviço criado com sucesso!');
+        setShowServiceModal(false);
+        resetServiceForm();
+        // Aqui você pode atualizar a lista de serviços se necessário
+      }
+    } catch (error) {
+      console.error('Erro ao criar serviço:', error);
+      Alert.alert('Erro', 'Não foi possível criar o serviço. Tente novamente.');
+    } finally {
+      setIsCreatingService(false);
+    }
+  };
+
+  // Função para resetar o formulário
+  const resetServiceForm = () => {
+    setServiceForm({
+      name: '',
+      price: '',
+      duration: '',
+      description: ''
+    });
+  };
+
+  // Função para abrir o modal
+  const openServiceModal = () => {
+    resetServiceForm();
+    setShowServiceModal(true);
+  };
   const [professional, setProfessional] = useState({
     name: "",
     email: "",
@@ -131,6 +212,10 @@ export default function ProfileScreen() {
           ) : (
             <Text style={styles.noServicesText}>Nenhum serviço cadastrado</Text>
           )}
+          <TouchableOpacity style={styles.addServiceButton} onPress={openServiceModal}>
+            <Ionicons name="add" size={20} color={theme.primary} />
+            <Text style={styles.addServiceText}>Adicionar Serviço</Text>
+          </TouchableOpacity>
         </View>
       ),
     },
@@ -648,38 +733,107 @@ export default function ProfileScreen() {
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[
-                styles.actionButton,
-                {
-                  backgroundColor: theme.warning + "20",
-                  borderColor: theme.warning + "40",
-                },
-              ]}
-              onPress={() => {
-                // Implementar backup
-              }}
-            >
-              <Ionicons
-                name="cloud-upload-outline"
-                size={20}
-                color={theme.warning}
-              />
-              <Text style={[styles.actionButtonText, { color: theme.warning }]}>
-                Backup dos Dados
-              </Text>
-            </TouchableOpacity>
+        
           </View>
 
           {/* App Info */}
           <View style={styles.section}>
             <View style={styles.appInfo}>
-              <Text style={styles.appInfoText}>Link Calendar</Text>
+              <Text style={styles.appInfoText}>Link Callendar</Text>
               <Text style={styles.appInfoVersion}>Versão 1.0.0</Text>
             </View>
           </View>
         </ScrollView>
       </SafeAreaView>
+
+      {/* Modal para criar serviço */}
+      <Modal
+        visible={showServiceModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowServiceModal(false)}
+      >
+        <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowServiceModal(false)}>
+              <Ionicons name="close" size={24} color={theme.text} />
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Novo Serviço</Text>
+            <View style={{ width: 24 }} />
+          </View>
+
+          <ScrollView style={styles.modalContent}>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Nome do Serviço *</Text>
+              <TextInput
+                style={styles.textInput}
+                value={serviceForm.name}
+                 onChangeText={(text) => setServiceForm({ ...serviceForm, name: text })}
+                placeholder="Ex: Corte de cabelo"
+                placeholderTextColor={theme.gray[500]}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Preço *</Text>
+              <TextInput
+                style={styles.textInput}
+                value={serviceForm.price}
+                 onChangeText={(text) => setServiceForm({ ...serviceForm, price: text })}
+                placeholder="Ex: 25.00"
+                placeholderTextColor={theme.gray[500]}
+                keyboardType="numeric"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Duração (minutos) *</Text>
+              <TextInput
+                style={styles.textInput}
+                value={serviceForm.duration}
+                 onChangeText={(text) => setServiceForm({ ...serviceForm, duration: text })}
+                placeholder="Ex: 30"
+                placeholderTextColor={theme.gray[500]}
+                keyboardType="numeric"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Descrição (opcional)</Text>
+              <TextInput
+                style={[styles.textInput, styles.textArea]}
+                value={serviceForm.description || ''}
+                 onChangeText={(text) => setServiceForm({ ...serviceForm, description: text })}
+                placeholder="Descreva o serviço..."
+                placeholderTextColor={theme.gray[500]}
+                multiline
+                numberOfLines={4}
+              />
+            </View>
+          </ScrollView>
+
+          <View style={styles.modalFooter}>
+            <TouchableOpacity
+              style={[styles.modalButton, styles.cancelButton]}
+              onPress={() => setShowServiceModal(false)}
+            >
+              <Text style={[styles.modalButtonText, { color: theme.gray[600] }]}>Cancelar</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[styles.modalButton, styles.createButton, { backgroundColor: theme.primary }]}
+              onPress={createService}
+              disabled={isCreatingService}
+            >
+              {isCreatingService ? (
+                <ActivityIndicator size="small" color={theme.background} />
+              ) : (
+                <Text style={[styles.modalButtonText, { color: theme.background }]}>Criar Serviço</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </Modal>
     </View>
   );
 }
@@ -1083,5 +1237,72 @@ const createStyles = (theme: any) =>
     appInfoVersion: {
       fontSize: 14,
       color: theme.textSecondary,
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingVertical: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.gray[200],
+    },
+    modalTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: theme.text,
+    },
+    modalContent: {
+      flex: 1,
+      paddingHorizontal: 16,
+      paddingTop: 16,
+    },
+    inputGroup: {
+      marginBottom: 16,
+    },
+    inputLabel: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: theme.text,
+      marginBottom: 8,
+    },
+    textInput: {
+      borderWidth: 1,
+      borderColor: theme.gray[300],
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 12,
+      fontSize: 16,
+      color: theme.text,
+      backgroundColor: theme.background,
+    },
+    textArea: {
+      height: 100,
+      textAlignVertical: 'top',
+    },
+    modalFooter: {
+      flexDirection: 'row',
+      paddingHorizontal: 16,
+      paddingVertical: 16,
+      borderTopWidth: 1,
+      borderTopColor: theme.gray[200],
+      gap: 12,
+    },
+    modalButton: {
+      flex: 1,
+      paddingVertical: 12,
+      borderRadius: 8,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    cancelButton: {
+      backgroundColor: theme.gray[200],
+    },
+    createButton: {
+      backgroundColor: theme.primary,
+    },
+    modalButtonText: {
+      fontSize: 16,
+      fontWeight: '600',
     },
   });

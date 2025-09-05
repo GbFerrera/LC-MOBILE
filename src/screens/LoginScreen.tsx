@@ -9,6 +9,7 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -115,13 +116,14 @@ const LoginScreen: React.FC = () => {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.header}>
-          <LinearGradient
-            colors={[theme.primary, '#2d8a6b']}
-            style={styles.logoContainer}
-          >
-            <Ionicons name="calendar" size={40} color={theme.white} />
-          </LinearGradient>
-          <Text style={styles.title}>Link Calendar</Text>
+          <View style={styles.logoContainer}>
+            <Image
+              source={require('../../assets/favicon.png')}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
+          </View>
+          <Text style={styles.title}>Link Callendar</Text>
           <Text style={styles.subtitle}>Faça login para continuar</Text>
         </View>
 
@@ -247,6 +249,10 @@ const createStyles = (theme: any) => StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 16,
     elevation: 8,
+  },
+  logoImage: {
+    width: 120,
+    height: 120,
   },
   title: {
     fontSize: 28,

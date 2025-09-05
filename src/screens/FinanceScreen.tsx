@@ -20,6 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography } from '../theme/theme';
 import { useBottomSheet } from '../hooks/useBottomSheet';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { useNavigation } from '@react-navigation/native';
 import BottomSheetModal from '../components/BottomSheetModal';
 import UnifiedHeader from '../components/UnifiedHeader';
@@ -93,6 +94,8 @@ export default function FinanceScreen() {
   const commandDetailsBottomSheet = useBottomSheet();
   const paymentBottomSheet = useBottomSheet();
   const { user } = useAuth();
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
   const navigation = useNavigation();
 
   // Estados para gaveta de caixa
@@ -987,7 +990,7 @@ export default function FinanceScreen() {
               console.log('Company ID:', user.company_id);
               console.log('Drawer ID:', currentDrawer.id);
               
-              await cashDrawerService.closeCashDrawer(user.company_id, currentDrawer.id!, closeData);
+              await cashDrawerService.closeCashDrawer(user.company_id || 0, currentDrawer.id!, closeData);
               
               console.log('✅ Gaveta fechada com sucesso');
               
@@ -2207,10 +2210,10 @@ export default function FinanceScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: theme.background,
   },
   safeArea: {
     flex: 1,
@@ -2224,13 +2227,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.lg,
-    backgroundColor: colors.white,
+    backgroundColor: theme.surface,
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: '600' as const,
     lineHeight: 32,
-    color: colors.gray[900],
+    color: theme.text,
   },
   headerActions: {
     flexDirection: 'row',
@@ -2257,12 +2260,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   drawerTitle: {
-    color: colors.white,
+    color: theme.white,
     fontSize: 18,
     fontWeight: 'bold',
   },
   drawerStatus: {
-    color: colors.white + 'CC',
+    color: theme.white + 'CC',
     fontSize: 14,
     marginTop: 2,
   },
@@ -2278,18 +2281,18 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   drawerValueLabel: {
-    color: colors.white + 'CC',
+    color: theme.white + 'CC',
     fontSize: 12,
     marginBottom: 4,
   },
   drawerValueAmount: {
-    color: colors.white,
+    color: theme.white,
     fontSize: 20,
     fontWeight: 'bold',
   },
   periodSelector: {
     flexDirection: 'row',
-    backgroundColor: colors.gray[100],
+    backgroundColor: theme.card,
     borderRadius: 12,
     padding: 4,
   },
@@ -2300,15 +2303,15 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   periodButtonActive: {
-    backgroundColor: colors.white,
+    backgroundColor: theme.surface,
   },
   periodButtonText: {
     fontSize: 14,
-    color: colors.gray[600],
+    color: theme.textSecondary,
     fontWeight: '500',
   },
   periodButtonTextActive: {
-    color: colors.primary,
+    color: theme.primary,
     fontWeight: '600',
   },
   summaryGrid: {
@@ -2317,7 +2320,7 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: theme.surface,
     borderRadius: 16,
     padding: spacing.md,
     marginHorizontal: 4,
@@ -2334,12 +2337,12 @@ const styles = StyleSheet.create({
   summaryValue: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: colors.gray[900],
+    color: theme.text,
     marginBottom: 4,
   },
   summaryLabel: {
     fontSize: 12,
-    color: colors.gray[600],
+    color: theme.textSecondary,
   },
   drawerSummaryGrid: {
     flexDirection: 'row',
@@ -2348,7 +2351,7 @@ const styles = StyleSheet.create({
   },
   drawerSummaryCard: {
     width: '48%',
-    backgroundColor: colors.white,
+    backgroundColor: theme.surface,
     borderRadius: 16,
     padding: spacing.md,
     marginBottom: spacing.sm,
@@ -2356,7 +2359,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     ...typography.h4,
-    color: colors.gray[900],
+    color: theme.text,
     marginBottom: spacing.md,
   },
   sectionHeader: {
@@ -2366,7 +2369,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   sectionAction: {
-    color: colors.primary,
+    color: theme.primary,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -2390,11 +2393,11 @@ const styles = StyleSheet.create({
   quickActionText: {
     fontSize: 12,
     textAlign: 'center',
-    color: colors.gray[700],
+    color: theme.text,
     fontWeight: '500',
   },
   transactionCard: {
-    backgroundColor: colors.white,
+    backgroundColor: theme.surface,
     borderRadius: 16,
     padding: spacing.md,
     marginBottom: spacing.sm,
@@ -2410,7 +2413,7 @@ const styles = StyleSheet.create({
   transactionDescription: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.gray[900],
+    color: theme.text,
     marginBottom: 4,
   },
   transactionMeta: {
@@ -2419,22 +2422,22 @@ const styles = StyleSheet.create({
   },
   transactionTime: {
     fontSize: 12,
-    color: colors.gray[500],
+    color: theme.textSecondary,
     marginRight: spacing.sm,
   },
   transactionMethod: {
     fontSize: 12,
-    color: colors.gray[500],
-    backgroundColor: colors.gray[100],
+    color: theme.textSecondary,
+    backgroundColor: theme.card,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
   },
   transactionCategory: {
     fontSize: 12,
-    color: colors.gray[500],
+    color: theme.textSecondary,
     marginLeft: spacing.sm,
-    backgroundColor: colors.gray[50],
+    backgroundColor: theme.card,
     paddingHorizontal: 4,
     paddingVertical: 1,
     borderRadius: 4,
@@ -2456,35 +2459,35 @@ const styles = StyleSheet.create({
   categoryTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.gray[700],
+    color: theme.text,
     marginBottom: spacing.sm,
   },
   categoryScroll: {
     flexDirection: 'row',
   },
   categoryButton: {
-    backgroundColor: colors.gray[100],
+    backgroundColor: theme.card,
     borderRadius: 20,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     marginRight: spacing.sm,
     borderWidth: 1,
-    borderColor: colors.gray[200],
+    borderColor: theme.border,
   },
   categoryButtonActive: {
-    backgroundColor: colors.primary + '10',
-    borderColor: colors.primary,
+    backgroundColor: theme.primary + '10',
+    borderColor: theme.primary,
   },
   categoryButtonText: {
     fontSize: 12,
-    color: colors.gray[700],
+    color: theme.text,
     fontWeight: '500',
   },
   categoryButtonTextActive: {
-    color: colors.primary,
+    color: theme.primary,
   },
   drawerSummary: {
-    backgroundColor: colors.white,
+    backgroundColor: theme.surface,
     borderRadius: 16,
     padding: spacing.md,
     marginTop: spacing.md,
@@ -2502,7 +2505,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.primary + '10',
+    backgroundColor: theme.primary + '10',
     borderRadius: 12,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
@@ -2511,7 +2514,7 @@ const styles = StyleSheet.create({
   viewDetailsText: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.primary,
+    color: theme.primary,
     marginHorizontal: spacing.sm,
   },
   commandFilters: {
@@ -2522,21 +2525,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
     borderRadius: 16,
-    backgroundColor: colors.gray[100],
+    backgroundColor: theme.card,
   },
   filterButtonActive: {
-    backgroundColor: colors.primary,
+    backgroundColor: theme.primary,
   },
   filterButtonText: {
     fontSize: 12,
-    color: colors.gray[600],
+    color: theme.textSecondary,
     fontWeight: '500',
   },
   filterButtonTextActive: {
-    color: colors.white,
+    color: theme.white,
   },
   commandCard: {
-    backgroundColor: colors.white,
+    backgroundColor: theme.surface,
     borderRadius: 16,
     marginBottom: spacing.sm,
   },
@@ -2554,7 +2557,7 @@ const styles = StyleSheet.create({
   commandClient: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.gray[900],
+    color: theme.text,
     marginBottom: 4,
   },
   commandMeta: {
@@ -2563,7 +2566,7 @@ const styles = StyleSheet.create({
   },
   commandTime: {
     fontSize: 12,
-    color: colors.gray[500],
+    color: theme.textSecondary,
     marginRight: spacing.sm,
   },
   commandStatus: {
@@ -2579,7 +2582,7 @@ const styles = StyleSheet.create({
   commandValue: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: colors.gray[900],
+    color: theme.text,
     marginBottom: 4,
   },
   payButton: {
@@ -2590,7 +2593,7 @@ const styles = StyleSheet.create({
   },
   payButtonText: {
     fontSize: 12,
-    color: colors.white,
+    color: theme.white,
     fontWeight: '600',
   },
   // Estilos para o header unificado
@@ -2602,7 +2605,7 @@ const styles = StyleSheet.create({
   headerActionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.gray[100],
+    backgroundColor: theme.card,
     borderRadius: 12,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
@@ -2612,7 +2615,7 @@ const styles = StyleSheet.create({
   },
   headerActionText: {
     fontSize: 12,
-    color: colors.primary,
+    color: theme.primary,
     fontWeight: '600',
     marginLeft: spacing.xs,
   },
