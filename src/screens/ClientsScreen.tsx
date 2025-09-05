@@ -232,8 +232,57 @@ export default function ClientsScreen() {
     });
   };
 
+  // Função para formatar data enquanto digita
+  const formatDateInput = (value: string): string => {
+    // Remove tudo que não é número
+    const numbersOnly = value.replace(/\D/g, '');
+    
+    // Aplica a máscara DD/MM/AAAA
+    if (numbersOnly.length <= 2) {
+      return numbersOnly;
+    } else if (numbersOnly.length <= 4) {
+      return `${numbersOnly.slice(0, 2)}/${numbersOnly.slice(2)}`;
+    } else if (numbersOnly.length <= 8) {
+      return `${numbersOnly.slice(0, 2)}/${numbersOnly.slice(2, 4)}/${numbersOnly.slice(4, 8)}`;
+    } else {
+      // Limita a 8 dígitos
+      return `${numbersOnly.slice(0, 2)}/${numbersOnly.slice(2, 4)}/${numbersOnly.slice(4, 8)}`;
+    }
+  };
+
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    if (field === 'birthday') {
+      // Aplica formatação apenas no campo de data
+      const formattedValue = formatDateInput(value);
+      setFormData(prev => ({ ...prev, [field]: formattedValue }));
+    } else {
+      setFormData(prev => ({ ...prev, [field]: value }));
+    }
+  };
+
+  // Função para converter data de DD/MM/AAAA para YYYY-MM-DD
+  const convertDateToISO = (dateString: string): string | null => {
+    if (!dateString || dateString.length < 8) return null;
+    
+    // Remove caracteres não numéricos
+    const numbersOnly = dateString.replace(/\D/g, '');
+    
+    if (numbersOnly.length === 8) {
+      // Formato DDMMAAAA
+      const day = numbersOnly.substring(0, 2);
+      const month = numbersOnly.substring(2, 4);
+      const year = numbersOnly.substring(4, 8);
+      
+      // Validar se a data é válida
+      const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+      if (date.getFullYear() == parseInt(year) && 
+          date.getMonth() == parseInt(month) - 1 && 
+          date.getDate() == parseInt(day)) {
+        return `${year}-${month}-${day}`;
+      }
+    }
+    
+    return null;
   };
 
   const handleCreateClient = async () => {
@@ -280,9 +329,30 @@ export default function ClientsScreen() {
       return;
     }
 
+    // Validar e converter data de nascimento se fornecida
+    let convertedBirthday = null;
+    if (formData.birthday) {
+      convertedBirthday = convertDateToISO(formData.birthday);
+      if (!convertedBirthday) {
+        Toast.show({
+          type: 'error',
+          text1: 'Data inválida',
+          text2: 'Por favor, insira uma data válida no formato DD/MM/AAAA',
+          position: 'top',
+        });
+        return;
+      }
+    }
+
     setCreating(true);
     try {
-      await clientService.createClient(user.company_id, formData);
+      // Preparar dados com a data convertida
+      const clientData = {
+        ...formData,
+        birthday: convertedBirthday || undefined
+      };
+      
+      await clientService.createClient(user.company_id, clientData);
       Toast.show({
         type: 'success',
         text1: 'Cliente criado',
