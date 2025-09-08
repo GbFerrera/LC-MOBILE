@@ -1,7 +1,7 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_BASE_URL = 'http://localhost:3131';
+const API_BASE_URL = 'https://api.linkcallendar.com';
 
 interface ApiResponse<T> {
   data?: T;
