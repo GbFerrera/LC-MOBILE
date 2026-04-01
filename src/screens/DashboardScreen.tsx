@@ -430,7 +430,7 @@ export default function DashboardScreen({ navigation }: any) {
         {/* Stats Cards */}
         <View style={styles.statsContainer}>
           <LinearGradient
-            colors={[colors.primary, '#2d8a6b']}
+            colors={[colors.primary, '#547a57']}
             style={styles.mainCard}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}

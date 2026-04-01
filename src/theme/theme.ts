@@ -4,28 +4,28 @@ export const theme = {
   ...DefaultTheme,
   colors: {
     ...DefaultTheme.colors,
-    primary: '#236F5D', // Verde azulado principal
-    secondary: '#2d8a6b',
-    tertiary: '#1a5a4a',
-    background: '#F8F9FA',
+    primary: '#3D583F', // Verde do LC-MOBILE-WEB
+    secondary: '#f4f4f5', // Cinza claro
+    tertiary: '#2a3d2b', // Verde mais escuro (derivado)
+    background: '#F1F1E7', // Bege do LC-MOBILE-WEB
     surface: '#FFFFFF',
     surfaceVariant: '#F5F5F5',
     onSurface: '#1C1B1F',
     onSurfaceVariant: '#757575',
     outline: '#E0E0E0',
     error: '#FF5252',
-    success: '#236F5D',
+    success: '#3D583F',
     warning: '#FF9800',
-    info: '#236F5D',
+    info: '#3D583F',
   },
   roundness: 12,
 };
 
 export const colors = {
-  primary: '#236F5D',
-  secondary: '#2d8a6b', 
-  tertiary: '#1a5a4a',
-  background: '#F8F9FA',
+  primary: '#3D583F',
+  secondary: '#f4f4f5', 
+  tertiary: '#2a3d2b',
+  background: '#F1F1E7',
   white: '#FFFFFF',
   black: '#000000',
   gray: {
@@ -40,10 +40,10 @@ export const colors = {
     800: '#424242',
     900: '#212121',
   },
-  success: '#236F5D',
+  success: '#3D583F',
   error: '#FF5252',
   warning: '#FF9800',
-  info: '#236F5D',
+  info: '#3D583F',
 };
 
 export const spacing = {

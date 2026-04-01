@@ -24,68 +24,52 @@ export interface CreateAppointmentPayload {
 export type UpdateAppointmentPayload = Partial<CreateAppointmentPayload>;
 
 /**
+ * Obtém o company_id do AsyncStorage de forma consistente
+ */
+const getCompanyId = async (): Promise<string | number> => {
+  try {
+    // Tentar obter diretamente do companyId (salvo pelo AuthContext)
+    const directCompanyId = await AsyncStorage.getItem('companyId');
+    if (directCompanyId) {
+      return directCompanyId;
+    }
+
+    // Tentar obter do userData ou do fallback @linkCallendar:user
+    const userData = await AsyncStorage.getItem('userData');
+    const legacyUser = await AsyncStorage.getItem('@linkCallendar:user');
+    const storedUser = userData || legacyUser;
+    
+    if (storedUser) {
+      const user = JSON.parse(storedUser);
+      if (user && user.company_id) {
+        return user.company_id;
+      }
+    }
+  } catch (e) {
+    console.warn('Erro ao acessar AsyncStorage para companyId:', e);
+  }
+  return 0;
+};
+
+/**
  * Cria um novo agendamento
  * @param payload Dados do agendamento
  * @returns Dados do agendamento criado
  */
 export const CreateAppointment = async (payload: CreateAppointmentPayload) => {
   try {
-    // Obter o company_id do AsyncStorage
-    let companyId: string | number = "0";
-    
-    try {
-      const storedUser = await AsyncStorage.getItem('@linkCallendar:user');
-      if (storedUser) {
-        const user = JSON.parse(storedUser);
-        if (user && user.company_id) {
-          companyId = user.company_id;
-          console.log('CreateAppointment - Usando company_id:', companyId);
-        }
-      }
-    } catch (e) {
-      console.warn('Erro ao acessar AsyncStorage:', e);
-    }
-    
-    // Se não encontrou, usar um valor padrão
-    if (companyId === "0") {
-      companyId = 1; // Valor padrão para testes
-      console.log('CreateAppointment - Usando company_id padrão:', companyId);
-    }
-    
-    console.log('CreateAppointment - Payload completo:', JSON.stringify(payload, null, 2));
-    console.log('CreateAppointment - Serviços:', JSON.stringify(payload.services, null, 2));
-    
-    // Garantir que o company_id seja uma string
-    const companyIdStr = String(companyId);
+    const headers = await getAuthHeaders();
     
     // Criar uma cópia limpa do payload
-    // Remover campos undefined e garantir que end_time só seja enviado quando necessário
     const cleanPayload = Object.entries(payload).reduce((acc, [key, value]) => {
-      // Ignorar campos undefined ou null
-      if (value === undefined || value === null) {
-        return acc;
-      }
-      
-      // Garantir que end_time só seja incluído quando isEncaixe for true
-      if (key === 'end_time' && !payload.isEncaixe) {
-        console.log('CreateAppointment - Removendo end_time para agendamento normal');
-        return acc;
-      }
-      
-      // Ignorar company_id se estiver presente no payload
-      if (key === 'company_id') {
-        return acc;
-      }
-      
+      if (value === undefined || value === null) return acc;
+      if (key === 'end_time' && !payload.isEncaixe) return acc;
+      if (key === 'company_id') return acc;
       return { ...acc, [key]: value };
     }, {});
     
-    // Enviar a requisição com o company_id nos headers
     const response = await baseURL.post("/appointments", cleanPayload, {
-      headers: {
-        "Content-Type": "application/json",
-        "company_id": companyIdStr
-      },
+      headers,
     });
     return response.data;
   } catch (error) {
@@ -105,38 +89,18 @@ export const UpdateAppointment = async (
   payload: UpdateAppointmentPayload
 ) => {
   try {
-    // Obter o company_id do AsyncStorage
-    let companyId = 0;
-    try {
-      const storedUser = await AsyncStorage.getItem('@linkCallendar:user');
-      if (storedUser) {
-        const user = JSON.parse(storedUser);
-        if (user && user.company_id) {
-          companyId = user.company_id;
-          console.log('UpdateAppointment - Usando company_id:', companyId);
-        }
-      }
-    } catch (e) {
-      console.warn('Erro ao acessar AsyncStorage:', e);
-    }
+    const headers = await getAuthHeaders();
     
-    // Garantir que company_id esteja no payload
+    // Garantir que company_id esteja no payload (opcional se o backend já pegar do header)
     const updatedPayload = {
       ...payload,
-      // Adicionar company_id no payload também, para garantir
-      company_id: companyId
+      company_id: headers['company_id']
     };
     
-    console.log(`Atualizando agendamento: ID=${appointmentId}, Company ID=${companyId}`);
-    
     const response = await baseURL.put(`/appointments/${appointmentId}`, updatedPayload, {
-      headers: {
-        "Content-Type": "application/json",
-        "company_id": String(companyId),
-      },
+      headers,
     });
     
-    console.log('Atualização de agendamento processada');
     return response.data;
   } catch (error) {
     console.error("Erro ao atualizar agendamento:", error);
@@ -153,39 +117,18 @@ export const CancelAppointment = async (
   appointmentId: string | number
 ) => {
   try {
-    // Obter o company_id do AsyncStorage
-    let companyId = 0;
-    try {
-      const storedUser = await AsyncStorage.getItem('@linkCallendar:user');
-      if (storedUser) {
-        const user = JSON.parse(storedUser);
-        if (user && user.company_id) {
-          companyId = user.company_id;
-          console.log('CancelAppointment - Usando company_id:', companyId);
-        }
-      }
-    } catch (e) {
-      console.warn('Erro ao acessar AsyncStorage:', e);
-    }
+    const headers = await getAuthHeaders();
     
-    console.log(`Tentando cancelar agendamento: ID=${appointmentId}, Company ID=${companyId}`);
-    
-    // Usar o método de atualização de status para cancelar
     const response = await baseURL.patch(`/appointments/${appointmentId}/status`, 
       { 
-        status: "canceled", // Importante: usar 'canceled' com um 'l' para compatibilidade com o backend
-        // Adicionar company_id no payload também, para garantir
-        company_id: companyId
+        status: "canceled",
+        company_id: headers['company_id']
       },
       {
-        headers: {
-          "Content-Type": "application/json",
-          "company_id": String(companyId),
-        },
+        headers,
       }
     );
     
-    console.log('Cancelamento de agendamento processado');
     return response.data;
   } catch (error) {
     console.error("Erro ao cancelar agendamento:", error);
@@ -204,45 +147,23 @@ export const UpdateAppointmentStatus = async (
   status: "pending" | "confirmed" | "cancelled" | "completed"
 ) => {
   try {
-    // Obter o company_id do AsyncStorage
-    let companyId = 0;
-    try {
-      const storedUser = await AsyncStorage.getItem('@linkCallendar:user');
-      if (storedUser) {
-        const user = JSON.parse(storedUser);
-        if (user && user.company_id) {
-          companyId = user.company_id;
-          console.log('UpdateAppointmentStatus - Usando company_id:', companyId);
-        }
-      }
-    } catch (e) {
-      console.warn('Erro ao acessar AsyncStorage:', e);
-    }
+    const headers = await getAuthHeaders();
     
-    // Mapear status para compatibilidade com backend
     let backendStatus: string = status;
     if (status === 'cancelled') {
       backendStatus = 'canceled';
     }
-    // Para 'completed', manter como está - verificar se backend aceita 'completed'
-    console.log(`Mapeamento de status: ${status} -> ${backendStatus}`);
-    
-    console.log(`Atualizando status do agendamento: ID=${appointmentId}, Status=${backendStatus}, Company ID=${companyId}`);
     
     const response = await baseURL.patch(`/appointments/${appointmentId}/status`, 
       { 
         status: backendStatus,
-        company_id: companyId
+        company_id: headers['company_id']
       },
       {
-        headers: {
-          "Content-Type": "application/json",
-          "company_id": String(companyId),
-        },
+        headers,
       }
     );
     
-    console.log('Status do agendamento atualizado');
     return response.data;
   } catch (error) {
     console.error("Erro ao atualizar status do agendamento:", error);
@@ -250,13 +171,34 @@ export const UpdateAppointmentStatus = async (
   }
 };
 
+/**
+ * Obtém os headers de autenticação
+ */
+const getAuthHeaders = async () => {
+  const token = await AsyncStorage.getItem('authToken');
+  const companyId = await getCompanyId();
+  
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  if (companyId) {
+    headers['company_id'] = String(companyId);
+  }
+
+  return headers;
+};
+
 // Exportar serviços existentes do api.ts para manter compatibilidade
 export const appointmentService = {
-  getByProfessionalAndDate: (professionalId: number, date: string) => {
+  getByProfessionalAndDate: async (professionalId: number, date: string) => {
+    const headers = await getAuthHeaders();
     return baseURL.get(`/schedules/${professionalId}/date/${date}`, {
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
     });
   },
   
@@ -267,4 +209,30 @@ export const appointmentService = {
   cancel: CancelAppointment,
   
   updateStatus: UpdateAppointmentStatus,
+
+  /**
+   * Lista os agendamentos com base em filtros
+   * @param params Filtros (start_date, end_date, team_id, client_id, status)
+   * @returns Lista de agendamentos
+   */
+  list: async (params: { 
+    start_date?: string; 
+    end_date?: string; 
+    team_id?: string | number; 
+    client_id?: string | number; 
+    status?: string 
+  }) => {
+    try {
+      const headers = await getAuthHeaders();
+
+      const response = await baseURL.get('/appointments', {
+        params,
+        headers,
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Erro ao listar agendamentos:", error);
+      throw error;
+    }
+  },
 };

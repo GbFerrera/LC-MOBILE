@@ -31,13 +31,13 @@ export interface Theme {
 }
 
 export const lightTheme: Theme = {
-  primary: '#236F5D',
-  secondary: '#2d8a6b',
-  success: '#236F5D',
+  primary: '#3D583F',
+  secondary: '#f4f4f5',
+  success: '#3D583F',
   warning: '#FF9800',
   error: '#F44336',
-  info: '#236F5D',
-  background: '#F8F9FA',
+  info: '#3D583F',
+  background: '#F1F1E7',
   surface: '#FFFFFF',
   card: '#FFFFFF',
   text: '#212121',
@@ -60,12 +60,12 @@ export const lightTheme: Theme = {
 };
 
 export const darkTheme: Theme = {
-  primary: '#236F5D',
+  primary: '#3D583F',
   secondary: '#2d8a6b',
-  success: '#236F5D',
+  success: '#3D583F',
   warning: '#FF9800',
   error: '#F44336',
-  info: '#236F5D',
+  info: '#3D583F',
   background: '#121212',
   surface: '#1E1E1E',
   card: '#2C2C2C',

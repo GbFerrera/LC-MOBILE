@@ -202,7 +202,7 @@ const LoginScreen: React.FC = () => {
             disabled={isLoading}
           >
             <LinearGradient
-              colors={[theme.primary, '#2d8a6b']}
+              colors={[theme.primary, '#547a57']}
               style={styles.loginButtonGradient}
             >
               {isLoading ? (
